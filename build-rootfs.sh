@@ -258,9 +258,10 @@ build_device() {
     
     cd "$br_dir"
     
-    # Full clean between device builds (distclean removes host tools, staging, etc.)
+    # Clean between device builds. Use targeted removal instead of distclean
+    # to preserve the dl/ download cache (saves ~5 min of re-downloads).
     log_info "Cleaning previous build artifacts..."
-    make distclean 2>/dev/null || true
+    rm -rf output/ .config .config.old .auto.deps
     
     # Apply config
     log_info "Applying config..."
@@ -270,6 +271,10 @@ build_device() {
     # Resolve any legacy config options (renamed/removed in this Buildroot version)
     log_info "Resolving legacy configuration options..."
     make olddefconfig 2>&1 | tee -a "$logfile" | tail -5
+    
+    # Strip BR2_LEGACY flag that Makefile.legacy checks to abort the build.
+    # olddefconfig sometimes fails to clear it.
+    sed -i '/^BR2_LEGACY=y/d' .config
     
     # Save a clean minimal config (useful for debugging and reproducibility)
     log_info "Saving clean config..."
