@@ -1,0 +1,406 @@
+#!/bin/sh
+# bin/jm-update - Transactional system updater for JukaMix OS
+#
+# Design goals (in priority order):
+#   1. Never leave the SD card in a half-updated state. Journal + rollback.
+#   2. Never touch user data. ROMs/BIOS/saves/states/screenshots/themes.
+#   3. Verify every file against the release manifest, not just the archive.
+#   4. Be resumable and idempotent. Re-running after a yank must be safe.
+#   5. Migrations run exactly once, in order, and are recorded.
+#
+# Commands:
+#   jm-update check                 - is a newer release available?
+#   jm-update apply [--dry-run]     - download + apply latest release
+#   jm-update apply --from-zip FILE - apply a local archive (offline)
+#   jm-update rollback              - undo the last applied transaction
+#   jm-update status                - version, last transaction, journal state
+#
+# Exit codes: 0 ok, 1 error, 2 usage, 3 nothing to do, 4 rolled back.
+
+set -eu
+
+JM_ROOT="${JM_ROOT:-/mnt/SDCARD}"
+. "$JM_ROOT/lib/jm_common.sh"
+
+jm_init "jm-update"
+
+JM_REPO="${JM_REPO:-jukaLang/JukaMix-OS}"
+JM_API="https://api.github.com/repos/$JM_REPO/releases/latest"
+JM_TX_DIR="$JM_SYSTEM/updates"
+JM_JOURNAL="$JM_TX_DIR/journal"
+JM_BACKUP_DIR="$JM_TX_DIR/backup"
+JM_MIGRATED="$JM_CONFIG_DIR/migrations.done"
+DRY_RUN=0
+
+#-----------------------------------------------------------------------------
+# Version comparison (semver, no external tools)
+#-----------------------------------------------------------------------------
+
+_norm_ver() { printf '%s' "$1" | sed -e 's/^[^0-9]*//' -e 's/[^0-9.].*$//'; }
+
+# ver_gt A B -> exit 0 if A > B
+ver_gt() {
+	_a=$(_norm_ver "$1"); _b=$(_norm_ver "$2")
+	_i=1
+	while [ "$_i" -le 3 ]; do
+		_x=$(printf '%s' "$_a" | cut -d. -f"$_i"); _x=${_x:-0}
+		_y=$(printf '%s' "$_b" | cut -d. -f"$_i"); _y=${_y:-0}
+		case "$_x" in *[!0-9]*) _x=0 ;; esac
+		case "$_y" in *[!0-9]*) _y=0 ;; esac
+		[ "$_x" -gt "$_y" ] && return 0
+		[ "$_x" -lt "$_y" ] && return 1
+		_i=$((_i + 1))
+	done
+	return 1
+}
+
+#-----------------------------------------------------------------------------
+# Release discovery
+#-----------------------------------------------------------------------------
+
+# Prints "tag<TAB>zip_url<TAB>sums_url" for the latest release.
+resolve_latest() {
+	_tmp=$(jm_mktemp_dir) || return 1
+	jm_fetch "$JM_API" "$_tmp/release.json" || return 1
+
+	_tag=$(sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+		"$_tmp/release.json" | head -n 1)
+	[ -n "$_tag" ] || { jm_error "could not parse tag_name from release feed"; return 1; }
+
+	# Pull asset URLs without jq (not present on device).
+	_zip=$(grep -o '"browser_download_url"[^,]*' "$_tmp/release.json" |
+		sed 's/.*"\(https[^"]*\)".*/\1/' | grep -E 'JukaMix_.*\.zip$' | head -n 1)
+
+	[ -n "$_zip" ] || { jm_error "release $_tag has no JukaMix_*.zip asset"; return 1; }
+	printf '%s\t%s\n' "$_tag" "$_zip"
+}
+
+cmd_check() {
+	jm_online || jm_die 1 "no network connection"
+	_info=$(resolve_latest) || exit 1
+	_tag=$(printf '%s' "$_info" | cut -f1)
+	_cur=$(jm_version)
+	if ver_gt "$_tag" "$_cur"; then
+		jm_info "update available: $_cur -> $_tag"
+		printf '%s\n' "$_tag"
+		return 0
+	fi
+	jm_info "already up to date ($_cur)"
+	return 3
+}
+
+#-----------------------------------------------------------------------------
+# Journal: one line per replaced file, written BEFORE the file is touched.
+# Format: <action>\t<relpath>\t<backup-path-or-->
+#-----------------------------------------------------------------------------
+
+journal_begin() {
+	mkdir -p "$JM_TX_DIR" "$JM_BACKUP_DIR"
+	if [ -s "$JM_JOURNAL" ]; then
+		jm_warn "found an incomplete transaction; rolling it back first"
+		do_rollback || jm_die 1 "could not clean up previous transaction"
+	fi
+	: >"$JM_JOURNAL"
+	printf 'BEGIN\t%s\t%s\n' "$(jm_version)" "$(date +%s)" >>"$JM_JOURNAL"
+	sync 2>/dev/null || true
+}
+
+journal_record() {
+	printf '%s\t%s\t%s\n' "$1" "$2" "$3" >>"$JM_JOURNAL"
+	sync 2>/dev/null || true
+}
+
+journal_commit() {
+	printf 'COMMIT\t%s\t%s\n' "$1" "$(date +%s)" >>"$JM_JOURNAL"
+	sync 2>/dev/null || true
+	# Keep a compressed audit trail, then clear the active journal.
+	mv -f "$JM_JOURNAL" "$JM_TX_DIR/journal.$(date +%s).done" 2>/dev/null || true
+	rm -rf "$JM_BACKUP_DIR"
+	: >"$JM_JOURNAL"
+}
+
+do_rollback() {
+	[ -s "$JM_JOURNAL" ] || { jm_info "nothing to roll back"; return 0; }
+	if grep -q '^COMMIT' "$JM_JOURNAL" 2>/dev/null; then
+		jm_warn "journal is already committed; nothing to roll back"
+		return 0
+	fi
+	jm_warn "rolling back transaction"
+	# Reverse order so directory creation/removal nests correctly.
+	_n=$(wc -l <"$JM_JOURNAL" | tr -d ' ')
+	while [ "$_n" -gt 0 ]; do
+		_line=$(sed -n "${_n}p" "$JM_JOURNAL")
+		_n=$((_n - 1))
+		_act=$(printf '%s' "$_line" | cut -f1)
+		_rel=$(printf '%s' "$_line" | cut -f2)
+		_bak=$(printf '%s' "$_line" | cut -f3)
+		case "$_act" in
+		REPLACE)
+			if [ -f "$_bak" ]; then
+				cp -p "$_bak" "$JM_ROOT/$_rel" 2>/dev/null ||
+					cp "$_bak" "$JM_ROOT/$_rel" ||
+					jm_error "rollback: failed to restore $_rel"
+			fi
+			;;
+		ADD)
+			rm -f "$JM_ROOT/$_rel" 2>/dev/null
+			;;
+		MKDIR)
+			rmdir "$JM_ROOT/$_rel" 2>/dev/null || true
+			;;
+		esac
+	done
+	sync 2>/dev/null || true
+	rm -rf "$JM_BACKUP_DIR"
+	: >"$JM_JOURNAL"
+	jm_warn "rollback complete; system left at $(jm_version)"
+	return 0
+}
+
+#-----------------------------------------------------------------------------
+# Apply
+#-----------------------------------------------------------------------------
+
+# Verifies each staged file against the release manifest (manifest.txt is the
+# transactional updater's source of truth: install<TAB>relpath<TAB>dest<TAB>sha256).
+# Full-image releases without a manifest skip per-file verification.
+verify_staged_tree() {
+	_stage="$1"
+	_manifest="$_stage/manifest.txt"
+	[ -f "$_manifest" ] || { jm_warn "no manifest in archive; per-file verification skipped"; return 0; }
+	_bad=0; _checked=0
+	while IFS= read -r _line; do
+		case "$_line" in '' | '#'*) continue ;; esac
+		_op=$(printf '%s' "$_line" | cut -f1)
+		_rel=$(printf '%s' "$_line" | cut -f2)
+		_want=$(printf '%s' "$_line" | cut -f4)
+		[ "$_op" = "install" ] || continue
+		[ -n "$_rel" ] && [ -n "$_want" ] || continue
+		if [ -f "$_stage/$_rel" ] && jm_verify_sha256 "$_stage/$_rel" "$_want"; then
+			_checked=$((_checked + 1))
+		else
+			_bad=$((_bad + 1))
+		fi
+	done <"$_manifest"
+	jm_info "per-file verification: $_checked ok, $_bad bad"
+	[ "$_bad" -eq 0 ] || return 1
+	return 0
+}
+
+# Builds the list of relative paths to install. Honours manifest.txt/json when
+# present (incremental release), otherwise walks the whole staged tree.
+build_file_list() {
+	_stage="$1"
+	if [ -f "$_stage/manifest.txt" ]; then
+		grep -v '^[[:space:]]*$' "$_stage/manifest.txt" | grep -v '^#'
+	elif [ -f "$_stage/manifest.json" ]; then
+		# Extract the "files" string array without jq.
+		sed -n 's/.*"\([^"]*\)".*/\1/p' "$_stage/manifest.json" |
+			grep -E '/' | grep -vE '^(files|version|device|sha256)$'
+	else
+		( cd "$_stage" && find . -type f | sed 's|^\./||' )
+	fi
+}
+
+apply_tree() {
+	_stage="$1"; _tag="$2"
+	_list=$(jm_mktemp_dir)/files
+	build_file_list "$_stage" >"$_list"
+
+	# Preflight: refuse to start if the update cannot possibly fit.
+	_need=$(du -sk "$_stage" 2>/dev/null | awk '{print $1}')
+	jm_require_space $(( ${_need:-0} * 2 + 51200 )) "$JM_ROOT" ||
+		jm_die 1 "aborting before any file was modified"
+
+	journal_begin
+	_applied=0; _skipped=0
+	while IFS= read -r _rel; do
+		case "$_rel" in '' | manifest.*) continue ;; esac
+		# Hard guarantee: user content is never overwritten by an update.
+		if jm_is_protected_path "$_rel"; then
+			jm_debug "protected, skipping: $_rel"
+			_skipped=$((_skipped + 1))
+			continue
+		fi
+		[ -f "$_stage/$_rel" ] || continue
+		_dst="$JM_ROOT/$_rel"
+		_dstdir=$(dirname "$_dst")
+
+		if [ "$DRY_RUN" -eq 1 ]; then
+			printf 'would install %s\n' "$_rel"
+			continue
+		fi
+
+		if [ ! -d "$_dstdir" ]; then
+			mkdir -p "$_dstdir" || { jm_error "mkdir failed: $_dstdir"; do_rollback; exit 4; }
+			journal_record MKDIR "$(printf '%s' "$_dstdir" | sed "s|^$JM_ROOT/||")" -
+		fi
+
+		if [ -f "$_dst" ]; then
+			_bak="$JM_BACKUP_DIR/$_rel"
+			mkdir -p "$(dirname "$_bak")"
+			cp -p "$_dst" "$_bak" 2>/dev/null || cp "$_dst" "$_bak" || {
+				jm_error "backup failed for $_rel"; do_rollback; exit 4; }
+			journal_record REPLACE "$_rel" "$_bak"
+		else
+			journal_record ADD "$_rel" -
+		fi
+
+		# Copy to a sibling temp then rename: an interrupted write can never
+		# leave a truncated binary in place.
+		_tmp="$_dstdir/.jmnew.$(basename "$_rel")"
+		if ! cp -p "$_stage/$_rel" "$_tmp" 2>/dev/null && ! cp "$_stage/$_rel" "$_tmp"; then
+			rm -f "$_tmp"
+			jm_error "copy failed: $_rel"
+			do_rollback
+			exit 4
+		fi
+		mv -f "$_tmp" "$_dst" || { rm -f "$_tmp"; do_rollback; exit 4; }
+		_applied=$((_applied + 1))
+	done <"$_list"
+
+	[ "$DRY_RUN" -eq 1 ] && { jm_info "dry run complete"; return 0; }
+
+	sync 2>/dev/null || true
+	jm_fix_exec_bits "$JM_ROOT/bin"
+	jm_fix_exec_bits "$JM_ROOT/Apps"
+	jm_fix_exec_bits "$JM_ROOT/Emus"
+	jm_fix_exec_bits "$JM_ROOT/scripts"
+
+	run_migrations || { jm_error "migration failed"; do_rollback; exit 4; }
+
+	printf '%s\n' "$_tag" | jm_atomic_write "$JM_SYSTEM/version.txt"
+	journal_commit "$_tag"
+	jm_info "applied $_applied files ($_skipped protected paths skipped) -> $_tag"
+	jm_toast "Updated to $_tag"
+	return 0
+}
+
+#-----------------------------------------------------------------------------
+# Migrations: run once, in lexical order, recorded in config/migrations.done
+#-----------------------------------------------------------------------------
+
+run_migrations() {
+	_dir="$JM_ROOT/migrations"
+	[ -d "$_dir" ] || return 0
+	mkdir -p "$(dirname "$JM_MIGRATED")"
+	touch "$JM_MIGRATED"
+	for _m in "$_dir"/*-to-*.sh; do
+		[ -f "$_m" ] || continue
+		_name=$(basename "$_m")
+		if grep -Fxq "$_name" "$JM_MIGRATED" 2>/dev/null; then
+			jm_debug "migration already applied: $_name"
+			continue
+		fi
+		jm_info "running migration $_name"
+		chmod +x "$_m" 2>/dev/null || true
+		if sh "$_m"; then
+			printf '%s\n' "$_name" >>"$JM_MIGRATED"
+			sync 2>/dev/null || true
+		else
+			jm_error "migration $_name failed"
+			return 1
+		fi
+	done
+	return 0
+}
+
+#-----------------------------------------------------------------------------
+# apply command
+#-----------------------------------------------------------------------------
+
+cmd_apply() {
+	FROM_ZIP=""
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--dry-run) DRY_RUN=1 ;;
+		--from-zip) shift; FROM_ZIP="${1:-}" ;;
+		*) jm_die 2 "unknown option: $1" ;;
+		esac
+		shift
+	done
+
+	jm_need unzip || exit 1
+	jm_lock update 10 || jm_die 1 "another update is already running"
+
+	_tmp=$(jm_mktemp_dir)
+	_stage="$_tmp/stage"
+	mkdir -p "$_stage"
+
+	if [ -n "$FROM_ZIP" ]; then
+		[ -f "$FROM_ZIP" ] || jm_die 1 "archive not found: $FROM_ZIP"
+		_zip="$FROM_ZIP"
+		# Offline zips may carry either naming scheme: legacy JukaMix-OS_v1.2.3.zip
+		# or date-stamped JukaMix_0820202614.zip. Extract the stamp from either.
+		_tag=$(basename "$_zip" | sed -n \
+			's/.*JukaMix-OS_v\([0-9.]*\)\.zip/v\1/p; s/.*JukaMix_\([0-9][0-9]*\)\.zip/\1/p')
+		_tag="${_tag:-local}"
+		jm_info "applying local archive $_zip ($_tag)"
+	else
+		jm_online || jm_die 1 "no network connection"
+		_info=$(resolve_latest) || exit 1
+		_tag=$(printf '%s' "$_info" | cut -f1)
+		_zipurl=$(printf '%s' "$_info" | cut -f2)
+
+		_cur=$(jm_version)
+		ver_gt "$_tag" "$_cur" || { jm_info "already up to date ($_cur)"; exit 3; }
+
+		_zip="$_tmp/update.zip"
+		jm_fetch "$_zipurl" "$_zip" || jm_die 1 "download failed"
+	fi
+
+	jm_info "extracting"
+	unzip -q -o "$_zip" -d "$_stage" || jm_die 1 "archive is corrupt or truncated"
+
+	# Some archives wrap everything in a single top-level directory.
+	_entries=$(ls -1 "$_stage" | wc -l | tr -d ' ')
+	if [ "$_entries" -eq 1 ] && [ -d "$_stage/$(ls -1 "$_stage")" ]; then
+		_inner="$_stage/$(ls -1 "$_stage")"
+		jm_debug "flattening wrapper directory $_inner"
+		_stage="$_inner"
+	fi
+
+	verify_staged_tree "$_stage" ||
+		jm_die 1 "staged tree failed verification; nothing was modified"
+
+	apply_tree "$_stage" "$_tag"
+}
+
+cmd_status() {
+	printf 'version:      %s\n' "$(jm_version)"
+	printf 'device:       %s\n' "$(jm_device)"
+	printf 'capabilities: %s\n' "$(jm_device_caps)"
+	printf 'free space:   %s KB\n' "$(jm_free_kb "$JM_ROOT")"
+	if [ -s "$JM_JOURNAL" ]; then
+		printf 'journal:      INCOMPLETE TRANSACTION (run: jm-update rollback)\n'
+	else
+		printf 'journal:      clean\n'
+	fi
+	_last=$(ls -1t "$JM_TX_DIR"/journal.*.done 2>/dev/null | head -n 1)
+	[ -n "$_last" ] && printf 'last applied: %s\n' "$(basename "$_last")"
+	printf 'migrations:   %s applied\n' "$(wc -l <"$JM_MIGRATED" 2>/dev/null | tr -d ' ' || printf 0)"
+}
+
+usage() {
+	cat <<'EOF'
+jm-update - transactional system updater for JukaMix OS
+
+  jm-update check                      is a newer release available?
+  jm-update apply [--dry-run]          download and apply the latest release
+  jm-update apply --from-zip <file>    apply a local archive (offline)
+  jm-update rollback                   undo an interrupted transaction
+  jm-update status                     version, journal and migration state
+
+User data (Roms, BIOS, Saves, States, Pictures, Themes, Backgrounds, Icons,
+Profiles, Data/ports, Best) is never modified.
+EOF
+}
+
+case "${1:-}" in
+check)    shift; cmd_check "$@" ;;
+apply)    shift; cmd_apply "$@" ;;
+rollback) shift; jm_lock update 10 || exit 1; do_rollback ;;
+status)   shift; cmd_status ;;
+-h | --help | '') usage ;;
+*) usage; exit 2 ;;
+esac

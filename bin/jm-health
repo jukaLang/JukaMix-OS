@@ -1,0 +1,57 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+
+# Inline thermal/battery reads to avoid two subprocess forks.
+raw=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || printf '0')
+jm_is_uint "$raw" || raw=0
+if [ "$raw" -gt 1000 ]; then temp=$((raw / 1000)); else temp=$raw; fi
+battery=100
+for _bp in /sys/class/power_supply/*/capacity; do
+    [ -r "$_bp" ] || continue
+    _bv=$(cat "$_bp" 2>/dev/null)
+    case $_bv in ''|*[!0-9]*) continue;; esac
+    battery=$_bv
+    break
+done
+unset _bp _bv
+# One df call instead of two.
+df_out=$(df -Pk "$JM_ROOT" 2>/dev/null | awk 'NR==2 {print $4, $2}')
+set -- $df_out
+free_kb=${1:-0}
+total_kb=${2:-0}
+mount_opts=$(awk -v p="$JM_ROOT" '$2==p {print $4}' /proc/mounts 2>/dev/null)
+[ -n "$mount_opts" ] || mount_opts=unknown
+warn=$(jm_config_get thermal_warn_c 75)
+jm_is_uint "$free_kb" || free_kb=0
+jm_is_uint "$total_kb" || total_kb=0
+
+status=ok
+if [ "$temp" -ge "$warn" ]; then status=warning; fi
+case ",$mount_opts," in *,ro,*) status=error;; esac
+
+report="$JM_LOG/health-$(date '+%Y%m%d-%H%M%S').env"
+{
+    printf 'timestamp=%s\n' "$(jm_now)"
+    printf 'status=%s\n' "$status"
+    printf 'temperature_c=%s\n' "$temp"
+    printf 'battery_pct=%s\n' "$battery"
+    printf 'storage_free_kb=%s\n' "$free_kb"
+    printf 'storage_total_kb=%s\n' "$total_kb"
+    printf 'mount_options=%s\n' "$mount_opts"
+} | jm_atomic_write "$report"
+
+if [ "$status" != ok ]; then
+    "$SELF_DIR/jm-notify" push warning "Health check: $status, temperature ${temp}C"
+    jm_emit health-warning "$report"
+fi
+
+keep=$(jm_config_get health_log_keep 20)
+jm_is_uint "$keep" || keep=20
+for old in $(find "$JM_LOG" -type f -name 'health-*.env' 2>/dev/null | sort -r); do
+    [ -f "$old" ] || continue
+    keep=$((keep - 1))
+    [ "$keep" -ge 0 ] || rm -f -- "$old"
+done
+cat "$report"

@@ -1,0 +1,51 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+
+requested=${1:-balanced}
+case $requested in battery|balanced|performance|maximum) ;; *) requested=balanced;; esac
+
+# Inline thermal/battery reads to avoid two subprocess forks.
+raw=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || printf '0')
+jm_is_uint "$raw" || raw=0
+if [ "$raw" -gt 1000 ]; then temp=$((raw / 1000)); else temp=$raw; fi
+battery=100
+for _bp in /sys/class/power_supply/*/capacity; do
+    [ -r "$_bp" ] || continue
+    _bv=$(cat "$_bp" 2>/dev/null)
+    case $_bv in ''|*[!0-9]*) continue;; esac
+    battery=$_bv
+    break
+done
+unset _bp _bv
+warn=$(jm_config_get thermal_warn_c 75)
+critical=$(jm_config_get thermal_critical_c 85)
+hysteresis=$(jm_config_get thermal_hysteresis_c 5)
+low=$(jm_config_get battery_low_pct 20)
+very_low=$(jm_config_get battery_critical_pct 8)
+
+for n in "$temp" "$battery" "$warn" "$critical" "$hysteresis" "$low" "$very_low"; do
+    jm_is_uint "$n" || { jm_log ERROR "invalid adaptive-profile numeric value"; exit 2; }
+done
+
+last=$(cat "$JM_STATE/recommended_profile" 2>/dev/null || printf 'balanced')
+profile=$requested
+reason=requested
+
+if [ "$temp" -ge "$critical" ]; then
+    profile=battery; reason=thermal-critical
+elif [ "$temp" -ge "$warn" ]; then
+    profile=balanced; reason=thermal-warning
+elif [ "$last" = battery ] && [ "$temp" -gt $((warn - hysteresis)) ]; then
+    profile=battery; reason=thermal-hysteresis
+elif [ "$battery" -le "$very_low" ]; then
+    profile=battery; reason=battery-critical
+elif [ "$battery" -le "$low" ] && [ "$profile" = maximum ]; then
+    profile=balanced; reason=battery-low
+fi
+
+printf '%s\n' "$profile" | jm_atomic_write "$JM_STATE/recommended_profile"
+jm_log INFO "profile=$profile reason=$reason temp=$temp battery=$battery requested=$requested"
+jm_emit profile-recommended "$profile" "$reason" "$temp" "$battery"
+printf '%s\t%s\n' "$profile" "$reason"

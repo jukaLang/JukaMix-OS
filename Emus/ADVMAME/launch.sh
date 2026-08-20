@@ -1,0 +1,9 @@
+#!/bin/sh
+. /mnt/SDCARD/System/usr/trimui/scripts/common_launcher.sh
+cpufreq.sh ondemand 2 "${JUKAMIX_CPUFREQ_MAX:-6}"
+
+export LD_LIBRARY_PATH="$PWD/lib:/mnt/SDCARD/System/lib:/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+Gamedir=$(dirname "$@")
+Gamefile=$(basename "$@")
+HOME="$PWD" ./advmame -dir_rom "$Gamedir" "${Gamefile%.*}"

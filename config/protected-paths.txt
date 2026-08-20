@@ -1,0 +1,18 @@
+# Paths relative to the SD-card root. Matching is case-insensitive.
+Roms
+ROMs
+BIOS
+Saves
+Save
+States
+SaveStates
+Screenshots
+Pictures
+Imgs
+Data
+Themes
+RetroArch/.retroarch/saves
+RetroArch/.retroarch/states
+RetroArch/.retroarch/screenshots
+JukaHub/jukauser.json
+JukaHub/jukaconfig.json

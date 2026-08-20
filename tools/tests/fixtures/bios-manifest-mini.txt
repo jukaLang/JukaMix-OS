@@ -1,0 +1,6 @@
+# Mini BIOS manifest used by the host-safe test suite.
+# Format mirrors tools/data/bios-manifest.txt (pipe-delimited).
+# system|filename|region|classification|min_size|max_size|hash_algo|hash|notes
+gb|gb_bios.bin||required|256|256|||
+gbc|gbc_bios.bin||required|2048|2048|||
+gba|gba_bios.bin||required|16384|16384|||

@@ -1,0 +1,30 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+
+cmd=${1:-list}
+db="$JM_STATE/playtime.tsv"
+jm_init_dirs
+
+case $cmd in
+    add)
+        game=${2:-}
+        seconds=${3:-0}
+        [ -n "$game" ] && jm_is_uint "$seconds" || exit 2
+        clean=$(printf '%s' "$game" | tr '\t\r\n' '   ')
+        [ -f "$db" ] || : > "$db"
+        awk -F '\t' -v OFS='\t' -v g="$clean" -v s="$seconds" '
+            BEGIN { found=0 }
+            $1==g { print $1, $2+s; found=1; next }
+            { print }
+            END { if (!found) print g, s }
+        ' "$db" 2>/dev/null | jm_atomic_write "$db"
+        ;;
+    list) [ -f "$db" ] && sort -t "$(printf '\t')" -k2,2nr "$db";;
+    get)
+        game=${2:-}
+        awk -F '\t' -v g="$game" '$1==g {print $2; found=1} END {if(!found) print 0}' "$db" 2>/dev/null
+        ;;
+    *) echo "usage: jm-playtime add GAME SECONDS | get GAME | list" >&2; exit 2;;
+esac

@@ -1,0 +1,48 @@
+# JukaMix OS BIOS manifest
+#
+# Format (pipe-delimited, one entry per line, '#' for comments):
+#   system|filename|region|classification|min_size|max_size|hash_algo|hash|notes
+#
+#   classification : required | recommended | optional
+#   min_size/max_size : expected size in bytes (0 = unknown / not enforced)
+#   hash_algo/hash : optional integrity check (sha256|md5). Leave empty to skip.
+#
+# This file lists the canonical BIOS/ROM images emulators look for. It stores
+# only filenames and expected metadata - never any proprietary BIOS content.
+# Community-maintained: submit additions via the normal repository workflow.
+
+# system|filename|region|classification|min_size|max_size|hash_algo|hash|notes
+gb|gb_bios.bin||required|256|256|||Game Boy bootstrap ROM
+gbc|gbc_bios.bin||required|2048|2048|||Game Boy Color bootstrap ROM
+gba|gba_bios.bin||required|16384|16384|||Game Boy Advance bootstrap ROM
+gba|gba_ld_bios.bin||optional|8192|8192|||GBA e-Reader (legacy)
+nes|nes_ntsc.pal||optional|0|0|||NES palette (optional)
+nes|nes_pal.pal||optional|0|0|||NES palette (optional)
+snes|cx4.data.rom||optional|0|0|||SuperFX CX4 data
+snes|dsp1.data.rom||optional|0|0|||DSP-1 data
+snes|dsp1b.data.rom||optional|0|0|||DSP-1B data
+snes|dsp2.data.rom||optional|0|0|||DSP-2 data
+snes|dsp3.data.rom||optional|0|0|||DSP-3 data
+snes|dsp4.data.rom||optional|0|0|||DSP-4 data
+snes|st010.data.rom||optional|0|0|||ST-010 data
+snes|st011.data.rom||optional|0|0|||ST-011 data
+snes|st018.data.rom||optional|0|0|||ST-018 data
+snes|spc700.rom||optional|0|0|||SPC700 sound ROM
+genesis|bios_MD.bin||optional|0|0|||Mega Drive / Genesis TMSS BIOS
+genesis|bios_CD.bin||optional|0|0|||Mega CD BIOS
+gg|gg_bios.bin||optional|0|0|||Game Gear BIOS
+sms|sms_bios.bin||optional|0|0|||Master System BIOS
+sms|sms_bios_us.bin||optional|0|0|||Master System BIOS (US)
+pce|pcecd_bios.bin||optional|0|0|||PC Engine CD BIOS
+pce|syscard3.pce||optional|0|0|||Super CD-ROM System card
+tg16|tg16_arcade.pce||optional|0|0|||TurboGrafx arcade card
+famicom|fds_bios.bin||optional|0|0|||Famicom Disk System BIOS
+psx|scph5500.bin||recommended|0|0|||PlayStation BIOS (JP)
+psx|scph5501.bin||recommended|0|0|||PlayStation BIOS (US)
+psx|scph5502.bin||recommended|0|0|||PlayStation BIOS (EU)
+saturn|sega_101.bin||optional|0|0|||Saturn BIOS (JP)
+saturn|mpr-17933.bin||optional|0|0|||Saturn BIOS (US/EU)
+pcfx|pcfx.rom||optional|0|0|||PC-FX BIOS
+neogeo|neogeo.zip||recommended|0|0|||Neo Geo MVS/Z80 BIOS set
+coleco|coleco.rom||optional|0|0|||ColecoVision BIOS
+atari2600|Atari800.bin||optional|0|0|||Atari 800 BIOS (for 5200 mode)

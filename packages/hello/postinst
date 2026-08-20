@@ -1,0 +1,5 @@
+#!/bin/sh
+# postinst runs after the payload is extracted. $IPKG_INSTROOT is the package
+# destination root (set by the installer); FAT/Windows checkouts drop exec bits,
+# so restore them here for scripts/binaries the package intends to run.
+chmod +x "${IPKG_INSTROOT:-/mnt/SDCARD}/usr/bin/hello" 2>/dev/null || true

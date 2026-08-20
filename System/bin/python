@@ -1,0 +1,3 @@
+#!/bin/sh
+# python launcher for JukaMix OS (Python 3 only).
+exec /mnt/SDCARD/System/bin/python3 "$@"

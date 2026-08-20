@@ -1,0 +1,13 @@
+# Firmware blobs shipped in the image for the on-device Firmware Update Wizard.
+# These files are NOT tracked in git (see .gitignore); scripts/fetch_firmware.sh
+# downloads any missing part from the URL on the right. Keep the local filename
+# in sync with what the wizard expects in /mnt/SDCARD/trimui/firmwares/.
+#
+# Format: <local filename><TAB><download URL>
+# Empty URL = no known source; the release build fails until one is configured.
+#
+# TODO(maintainer): point these at the canonical TrimUI firmware v1.1.1
+# download (split 7z parts). Until then, builds use the blobs already present
+# on the machine that runs scripts/build_release.sh.
+firmware_tsp_v1.1.1_20251128.7z.001
+firmware_tsp_v1.1.1_20251128.7z.002

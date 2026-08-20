@@ -1,0 +1,25 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+quiet=0
+[ "${1:-}" = "--quiet" ] && quiet=1
+fail=0
+
+check() {
+    name=$1; shift
+    if "$@" >/dev/null 2>&1; then result=PASS; else result=FAIL; fail=$((fail+1)); fi
+    [ "$quiet" -eq 1 ] || printf '%-28s %s\n' "$name" "$result"
+}
+
+check "configuration" "$SELF_DIR/jm-config-check"
+check "state directory writable" test -w "$JM_STATE"
+check "log directory writable" test -w "$JM_LOG"
+check "root exists" test -d "$JM_ROOT"
+check "tar available" sh -c 'command -v tar'
+check "awk available" sh -c 'command -v awk'
+check "df available" sh -c 'command -v df'
+check "capability scan" "$SELF_DIR/jm-capabilities" --refresh
+
+[ "$quiet" -eq 1 ] || "$SELF_DIR/jm-health"
+exit "$fail"

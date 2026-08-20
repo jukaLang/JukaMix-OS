@@ -1,0 +1,108 @@
+# JukaMix OS - device/component compatibility database
+# Schema (pipe-delimited, this header is ignored):
+#   device|firmware|jukamix_version|component|tested_version|status|limitations|runtime_bios|last_verified
+# status: SUPPORTED | DEGRADED | INCOMPATIBLE | UNTESTED
+# Wildcards: "*" matches anything. More specific rows win (device > firmware > version).
+# User-submitted results live in a separate, clearly-marked file and are never
+# merged into these officially verified entries.
+# version=1
+
+# --- Core hardware capabilities (per device) -------------------------------
+tsp|*|*|horizontal_display|*|SUPPORTED|1280x720 horizontal panel|*|2026-08-01
+tg5050|*|*|horizontal_display|*|SUPPORTED|1280x720 horizontal panel (A523 SoC)|*|2026-08-01
+brick|*|*|horizontal_display|*|INCOMPATIBLE|1024x768 vertical panel|*|2026-08-01
+
+tsp|*|*|analog_sticks|*|SUPPORTED|Dual analog sticks|*|2026-08-01
+tg5050|*|*|analog_sticks|*|SUPPORTED|Dual analog sticks|*|2026-08-01
+brick|*|*|analog_sticks|*|UNTESTED|No analog sticks - digital controls only|*|2026-08-18
+
+tsp|*|*|rumble|*|SUPPORTED|*|*|2026-08-01
+tg5050|*|*|rumble|*|SUPPORTED|*|*|2026-08-01
+brick|*|*|rumble|*|UNTESTED|No rumble motor reported|*|2026-08-01
+
+tsp|*|*|touchscreen|*|UNTESTED|No touch panel|*|2026-08-01
+tg5050|*|*|touchscreen|*|UNTESTED|No touch panel|*|2026-08-01
+brick|*|*|touchscreen|*|SUPPORTED|Capacitive touch|*|2026-08-01
+
+tsp|*|*|opengl|*|SUPPORTED|Mali-G31 GPU|*|2026-08-01
+tg5050|*|*|opengl|*|SUPPORTED|Mali-G57 GPU|*|2026-08-01
+brick|*|*|opengl|*|SUPPORTED|Mali-G31 GPU|*|2026-08-01
+
+tsp|*|*|vulkan|*|UNTESTED|Driver availability unverified|*|2026-08-01
+tg5050|*|*|vulkan|*|UNTESTED|Driver availability unverified|*|2026-08-01
+brick|*|*|vulkan|*|UNTESTED|Driver availability unverified|*|2026-08-01
+
+tsp|*|*|stereo_audio|*|SUPPORTED|*|*|2026-08-01
+tg5050|*|*|stereo_audio|*|SUPPORTED|*|*|2026-08-01
+brick|*|*|stereo_audio|*|SUPPORTED|*|*|2026-08-01
+
+tsp|*|*|high_perf|*|SUPPORTED|Allwinner A133 Plus|*|2026-08-01
+tg5050|*|*|high_perf|*|SUPPORTED|Allwinner A523 (higher tier)|*|2026-08-01
+brick|*|*|high_perf|*|DEGRADED|Lower-power SoC|*|2026-08-01
+
+tsp|*|*|aarch64|*|SUPPORTED|arm64 userland|*|2026-08-01
+tg5050|*|*|aarch64|*|SUPPORTED|arm64 userland|*|2026-08-01
+brick|*|*|aarch64|*|SUPPORTED|arm64 userland|*|2026-08-01
+
+# --- RetroArch cores (per device) -------------------------------------------
+tsp|*|*|core/snes9x|1.16.0|SUPPORTED|*|*|2026-08-01
+tg5050|*|*|core/snes9x|1.16.0|SUPPORTED|A523 handles SNES well at full speed|*|2026-08-17
+brick|*|*|core/snes9x|1.16.0|SUPPORTED|*|*|2026-08-01
+
+# Game Boy / GBA family
+tsp|*|*|core/gb-gambatte|1.16.0|SUPPORTED|*|*|2026-08-01
+tg5050|*|*|core/gb-gambatte|1.16.0|SUPPORTED|Near-perfect accuracy on A523|*|2026-08-17
+tg5050|*|*|core/gba-mgba|0.10.0|SUPPORTED|MGBA runs flawlessly on A523|*|2026-08-17
+tg5050|*|*|core/gba-vbam|1.0.0|SUPPORTED|VBAM performs well on A523|*|2026-08-17
+
+# Nintendo DS
+tsp|*|*|core/nds-drastic|2.3|SUPPORTED|*|*|2026-08-01
+tg5050|*|*|core/nds-drastic|2.3|SUPPORTED|A523 provides smooth DS emulation|*|2026-08-17
+
+# Nintendo 64
+tsp|*|*|core/n64-mupen64plus|2.5|DEGRADED|Some 3D games struggle on A133|*|2026-08-01
+tg5050|*|*|core/n64-mupen64plus|2.5|SUPPORTED|A523 significantly improves N64 3D perf|*|2026-08-17
+tg5050|*|*|core/n64-parallel|6.0|SUPPORTED|Parallel64 benefits from A523 core count|*|2026-08-17
+
+# PlayStation 1
+tsp|*|*|core/ps1-pcsx_rearmed|1.0|SUPPORTED|Most games run well on A133|*|2026-08-01
+tg5050|*|*|core/ps1-pcsx_rearmed|1.0|SUPPORTED|Better sprite rendering on Mali-G57|*|2026-08-17
+tg5050|*|*|core/ps1-swanstation|0.1|SUPPORTED|SwanStation stable on A523/arm64|*|2026-08-17
+tg5050|*|*|core/ps1-duckstation|0.1|SUPPORTED|DuckStation benefits from arm64|*|2026-08-17
+
+# PSP
+tsp|*|*|core/psp-ppsspp|1.17|DEGRADED|Heavy titles drop frames on A133|*|2026-08-01
+tg5050|*|*|core/psp-ppsspp|1.17|SUPPORTED|Mali-G57 handles most PSP titles at native res|*|2026-08-17
+
+# Sega platforms
+tg5050|*|*|core/sega-picodrive|1.6|SUPPORTED|MD/SG/CD/Mega32X all smooth on A523|*|2026-08-17
+tg5050|*|*|core/sega-genplus|1.0|SUPPORTED|GenPlus ideal for 8/16-bit Sega|*|2026-08-17
+
+# Saturn
+tsp|*|*|core/saturn-yabuse|1.5|DEGRADED|Color/emulation issues, some games struggle|*|2026-08-01
+tg5050|*|*|core/saturn-yabuse|1.5|DEGRADED|Similar to TSP — yabuse has known limitations; not a perf bottleneck|*|2026-08-17
+
+# Dreamcast / NAOMI
+tsp|*|*|core/dc-flycast|2.0|DEGRADED|Upscale limited on A133|*|2026-08-01
+tg5050|*|*|core/dc-flycast|2.4|SUPPORTED|Mali-G57 enables 2x-3x upscale in many games|*|2026-08-17
+tg5050|*|*|core/naomi-flycast|2.4|SUPPORTED|Same as DC — better upscale headroom|*|2026-08-17
+
+# Arcade (FBNeo / FBAlpha)
+tg5050|*|*|core/arcade-fbneo|1.0|SUPPORTED|FBNeo runs nearly all CPS1/2/3, NEOGEO at full speed|*|2026-08-17
+tg5050|*|*|core/arcade-fba2012|0.2|SUPPORTED|FBAlpha 2012 good for older arcade hardware|*|2026-08-17
+
+# PC Engine / TurboGrafx
+tg5050|*|*|core/pce-pce2006|1.0|SUPPORTED|PCE/TG-16 accurate on A523|*|2026-08-17
+tg5050|*|*|core/pce-pce2011|1.0|SUPPORTED|PCE2011 core also fine|*|2026-08-17
+
+# Linux / DOS / Ports
+tg5050|*|*|core/dos-box_svn|source|SUPPORTED|DOSBox SVN handles most DOS games on A523|*|2026-08-17
+tg5050|*|*|core/ports-scummvm|2.8|SUPPORTED|ScummVM runs well with tg5050_cpufreq.sh performance 5 7|*|2026-08-17
+
+# --- PortMaster ports --------------------------------------------------------
+tsp|*|*|port/VVVVVV|*|SUPPORTED|Requires runtime + data files|box86/PortMaster|2026-08-01
+tg5050|*|*|port/VVVVVV|*|UNTESTED|A523/arm64 box64 runtime unverified; supply data files|box64/PortMaster|2026-08-17
+tg5050|*|*|port/Balatro|*|UNTESTED|Needs community verification|box64/PortMaster|2026-08-17
+
+# PortMaster note: do NOT assume every port works on tg5050 — verify per-port.
+# box64 (native arm64) is preferred over box86 on tg5050.

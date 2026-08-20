@@ -1,0 +1,7 @@
+{
+"label":"JukaMix Control Center",
+"icon":"icon.png",
+"iconsel":"icon.png",
+"launch":"launch.sh",
+"description":"Unified device, tools, recovery and update control."
+}

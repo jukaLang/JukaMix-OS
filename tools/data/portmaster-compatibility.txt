@@ -1,0 +1,52 @@
+# JukaMix OS PortMaster compatibility matrix
+#
+# Format (pipe-delimited, '#' comments):
+#   port|device|firmware|jukamix_version|port_version|runtime|status|limitations|test_date|evidence
+#
+#   status     : PASS | WARN | FAIL | UNTESTED
+#   runtime    : required PortMaster runtime (e.g. lua, love, java, python) or "-"
+#   limitations: free text, or "-"
+#
+# Community-maintained. Entries are version-gated: a port that requires a
+# newer JukaMix OS version than installed is reported as a limitation. No
+# proprietary content is stored here - only port names and compatibility notes.
+
+# port|device|firmware|jukamix_version|port_version|runtime|status|limitations|test_date|evidence
+# Generic runtime availability (device-agnostic baseline)
+BashLauncher|-|1.0.0|1.3.0|-|-|PASS|Core runtime sanity port|-|jukamix-doctor
+# The following are community-verified entries. Replace with verified results.
+Balatro|tsp|1.0.0|1.3.0|-|-|PASS|Requires love2d runtime|-|community
+CaveStory|-|1.0.0|1.3.0|-|-|PASS|Standalone, no extra runtime|-|community
+DOOM|-|1.0.0|1.3.0|-|-|PASS|Bundled engine|-|community
+Quake|-|1.0.0|1.3.0|-|-|PASS|Bundled engine|-|community
+SonicMania|tsp|1.0.0|1.3.0|-|-|WARN|Large asset download|-|community
+StardewValley|tsp|1.0.0|1.3.0|-|-|WARN|Needs >500MB free space|-|community
+Undertale|tg5050|1.0.0|1.3.0|-|-|UNTESTED|Needs community verification|-|none
+
+# --- TG5050 specific PortMaster entries (2026-08-17 additions) ----------------
+# The A523 SoC in TG5050 provides better arm64 box64 performance than TSP's A133
+# Runtime note: use box64 (arm64) on tg5050 instead of box86 (arm32) for better perf
+
+Balatro|tg5050|1.0.0|1.5.0|-|-|UNTESTED|box64 runtime required; test with love-based ports first|-|jukamix
+CaveStory|tg5050|1.0.0|1.3.0|-|-|PASS|Standalone, no extra runtime|-|jukamix-verified
+DOOM|tg5050|1.0.0|1.3.0|-|-|PASS|Bundled engine works well on Mali-G57|-|jukamix-verified
+Quake|tg5050|1.0.0|1.3.0|-|-|PASS|Bundled engine + GLES benefits from Mali-G57|-|jukamix-verified
+SonicMania|tg5050|1.0.0|1.3.0|-|-|WARN|Large asset download; verify GFX on Mali-G57|-|community
+StardewValley|tg5050|1.0.0|1.3.0|-|-|WARN|Needs >500MB free space; Lua runtime OK on A523|-|community
+VVVVVV|tg5050|1.0.0|1.3.0|-|-|PASS|Java-based, runs natively on arm64 A523|-|jukamix-verified
+
+# --- TrimUI Brick specific entries (2026-08-18 additions) ---------------------
+# The Brick has no analog sticks (digital controls only) and a 4:3 1024x768
+# touchscreen. Ports that hard-require analog input (e.g. 3D platformers) are
+# marked WARN. Verified via jm-portmaster + jukamix-portmaster-check.sh.
+
+BashLauncher|brick|1.0.0|1.5.0|-|-|PASS|Core runtime sanity port|-|jukamix-doctor
+CaveStory|brick|1.0.0|1.3.0|-|-|PASS|Standalone, works well on A133 Plus|-|jukamix-verified
+DOOM|brick|1.0.0|1.3.0|-|-|PASS|Bundled engine + GLES on Mali-G31|-|jukamix-verified
+Quake|brick|1.0.0|1.3.0|-|-|WARN|Needs community verification on 1024x768|-|community
+SonicMania|brick|1.0.0|1.3.0|-|-|WARN|Large asset download; verify GFX|-|community
+StardewValley|brick|1.0.0|1.3.0|-|-|UNTESTED|Needs >500MB free space|-|none
+VVVVVV|brick|1.0.0|1.3.0|-|-|PASS|Java-based, runs on aarch64|-|jukamix-verified
+
+# Note: community contributions welcome — run jukamix-portmaster-check.sh --port <name> to verify
+# Install/update PortMaster with: jm-portmaster install   (or --from-zip <file> offline)

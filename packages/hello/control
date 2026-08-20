@@ -1,0 +1,5 @@
+Package: hello
+Version: 1.0.0
+Architecture: aarch64
+Description: Sample JukaMix package that installs a hello script
+Maintainer: JukaMix Team <dev@jukalang.com>

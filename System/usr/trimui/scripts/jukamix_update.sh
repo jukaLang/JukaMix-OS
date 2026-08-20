@@ -1,0 +1,524 @@
+#!/bin/sh
+
+UPDATE_FILE=$(find /mnt/SDCARD -maxdepth 1 -name "JukaMix_*.zip" -print -quit)
+
+if [ ! -f /mnt/SDCARD/System/usr/trimui/scripts/update_common.sh ]; then 
+  /mnt/SDCARD/System/bin/7zz e "$UPDATE_FILE" "System/usr/trimui/scripts/update_common.sh" -o/mnt/SDCARD/System/usr/trimui/scripts -y
+fi 
+
+. /mnt/SDCARD/System/usr/trimui/scripts/update_common.sh
+
+echo performance >/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+echo 1608000 >/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+
+RED=""
+GREEN=""
+YELLOW=""
+BLUE=""
+PURPLE=""
+NC=""
+
+main() {
+# Find the update file
+if [ -n "$UPDATE_FILE" ]; then
+  script_dir=$(dirname "$(realpath "$0")")
+  if [ "$script_dir" != "/tmp" ]; then
+    /mnt/SDCARD/System/bin/7zz e "$UPDATE_FILE" "System/usr/trimui/scripts/jukamix_update.sh" -o/tmp -y
+    chmod a+x "/tmp/jukamix_update.sh"
+    sh "/tmp/jukamix_update.sh"
+    exit
+  fi
+else
+  echo "No update file found"
+  exit
+fi
+
+
+if [ -z "$Local_JukaMixVersion" ]; then
+  Local_JukaMixVersion="x"
+fi
+update_version=$(echo "$UPDATE_FILE" | awk -F'_v|\.zip' '{print $2}')
+
+cp /mnt/SDCARD/System/bin/7zz /tmp
+rm -rf "/mnt/SDCARD/System Volume Information"
+echo 1 >/tmp/stay_awake
+
+# Create backup directory
+BCK_DIR="/mnt/SDCARD/_Updates/Backup_JukaMix_v$Local_JukaMixVersion"
+
+
+if [ -d "$BCK_DIR" ]; then
+  BCK_DIR="${BCK_DIR}_$timestamp"
+fi
+mkdir -p "$BCK_DIR"
+sync
+
+LOG_FILE="/mnt/SDCARD/_Updates/JukaMix_v${update_version}_${timestamp}.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+# echo "==============  Updating JukaMix OS v$Local_JukaMixVersion to v$update_version  =============="
+echo "${BLUE}======  Updating JukaMix OS v$Local_JukaMixVersion to v$update_version  ======${NC}"
+
+check_available_space "5000"
+    if [ $? -eq 1 ]; then
+        echo -ne "${YELLOW}"
+        read -n 1 -s -r -p "Press A to exit"
+        exit 3
+    fi
+
+check_filesystem
+
+echo "${BLUE}==============          Creating backup of old files...           ==============${NC}"
+
+echo "Destination directory: $BCK_DIR"
+# Execute the move_items function
+move_items
+
+# No BIOS should be here... but just in case
+mv "$BCK_DIR/RetroArch/.retroarch/system/"* "/mnt/SDCARD/BIOS" 2>/dev/null
+sync
+
+echo "${BLUE}=============  Decompressing new JukaMix OS archive, please wait...  =============${NC}"
+# Install JukaMix OS new version
+echo "JukaMix OS archive decompression lasts at least 4 minutes."
+echo -e "\n\n     !!!!!! Please be patient  !!!!!! \n\n"
+/tmp/7zz x -aoa "$UPDATE_FILE" -o"/mnt/SDCARD"
+sync
+
+if [ $? -eq 0 ]; then
+  echo -e "${GREEN}JukaMix OS v$update_version extraction successful.${NC}"
+  # infoscreen.sh -m "JukaMix OS v$update_version extraction successful."
+  mv "$UPDATE_FILE" "/mnt/SDCARD/_Updates"
+else
+  echo -ne "${RED}JukaMix OS v$update_version extraction encountered errors.${NC}\n"
+  # infoscreen.sh -m "JukaMix OS v$update_version extraction encountered errors." -t 5
+fi
+
+echo "${BLUE}=====================  Restoring saves and savestates...  =====================${NC}"
+
+# Restore saves and savestates from RetroArch (per-CORE directory layout)
+migrate_ra_flat "RetroArch saves"     "$BCK_DIR/RetroArch/.retroarch/saves"  "/mnt/SDCARD/RetroArch/.retroarch/saves"
+migrate_ra_flat "RetroArch savestates" "$BCK_DIR/RetroArch/.retroarch/states" "/mnt/SDCARD/RetroArch/.retroarch/states"
+restore_files "Retroarch cheats"  "$BCK_DIR/RetroArch/.retroarch/cheats/" "/mnt/SDCARD/RetroArch/.retroarch/cheats/" "*"
+restore_files "Retroarch database"  "$BCK_DIR/RetroArch/.retroarch/database/" "/mnt/SDCARD/RetroArch/.retroarch/database/" "*"
+restore_files "Retroarch filters"  "$BCK_DIR/RetroArch/.retroarch/filters/" "/mnt/SDCARD/RetroArch/.retroarch/filters/" "*" No_Overwrite
+restore_files "Retroarch playlists"  "$BCK_DIR/RetroArch/.retroarch/playlists/" "/mnt/SDCARD/RetroArch/.retroarch/playlists/" "*"
+restore_files "Retroarch screenshots"  "$BCK_DIR/RetroArch/.retroarch/screenshots/" "/mnt/SDCARD/RetroArch/.retroarch/screenshots/" "*"
+restore_files "Retroarch shaders"  "$BCK_DIR/RetroArch/.retroarch/shaders/" "/mnt/SDCARD/RetroArch/.retroarch/shaders/" "*" No_Overwrite
+restore_files "Retroarch thumbnails"  "$BCK_DIR/RetroArch/.retroarch/thumbnails/" "/mnt/SDCARD/RetroArch/.retroarch/thumbnails/" "*"
+
+
+# Restore Retroarch settings
+SOURCE_FILE="$BCK_DIR/RetroArch/retroarch.cfg"
+TARGET_FILE="/mnt/SDCARD/RetroArch/retroarch.cfg"
+KEYS="cheevos_username cheevos_password cheevos_token cheevos_enable"
+
+extract_keys "$KEYS" "$SOURCE_FILE" "$TARGET_FILE"
+
+# Restore PPSSPP 1.15.4 standalone saves and savestates
+restore_files "PPSSPP 1.15.4 saves"             "$BCK_DIR/Emus/PSP/PPSSPP_1.15.4/.config/ppsspp/PSP/SAVEDATA/"      "/mnt/SDCARD/Emus/PSP/PPSSPP_1.15.4/.config/ppsspp/PSP/SAVEDATA/" "*"
+restore_files "PPSSPP 1.15.4 savestates"        "$BCK_DIR/Emus/PSP/PPSSPP_1.15.4/.config/ppsspp/PSP/PPSSPP_STATE/"  "/mnt/SDCARD/Emus/PSP/PPSSPP_1.15.4/.config/ppsspp/PSP/PPSSPP_STATE/" "*"
+restore_files "PPSSPP 1.15.4 cheats"            "$BCK_DIR/Emus/PSP/PPSSPP_1.15.4/.config/ppsspp/PSP/Cheats/"        "/mnt/SDCARD/Emus/PSP/PPSSPP_1.15.4/.config/ppsspp/PSP/Cheats/" "*.ini"
+restore_files "PPSSPP 1.15.4 game settings"     "$BCK_DIR/Emus/PSP/PPSSPP_1.15.4/.config/ppsspp/PSP/SYSTEM/"        "/mnt/SDCARD/Emus/PSP/PPSSPP_1.15.4/.config/ppsspp/PSP/SYSTEM/" "*_ppsspp.ini"
+
+# Restore PPSSPP 1.17.1+ standalone saves, savestates and retroachievements (JukaMix path = 1.0.0)
+restore_files "PPSSPP saves"             "$BCK_DIR/Emus/PSP/.config/ppsspp/PSP/SAVEDATA/"       "/mnt/SDCARD/Emus/PSP/PPSSPP/.config/ppsspp/PSP/SAVEDATA/" "*"
+restore_files "PPSSPP savestates"        "$BCK_DIR/Emus/PSP/.config/ppsspp/PSP/PPSSPP_STATE/"   "/mnt/SDCARD/Emus/PSP/PPSSPP/.config/ppsspp/PSP/PPSSPP_STATE/" "*"
+restore_files "PPSSPP retroachievements" "$BCK_DIR/Emus/PSP/.config/ppsspp/PSP/SYSTEM/"         "/mnt/SDCARD/Emus/PSP/PPSSPP/.config/ppsspp/PSP/SYSTEM/" "*.dat"
+restore_files "PPSSPP cheats"            "$BCK_DIR/Emus/PSP/.config/ppsspp/PSP/Cheats/"         "/mnt/SDCARD/Emus/PSP/PPSSPP/.config/ppsspp/PSP/Cheats/" "*.ini"
+restore_files "PPSSPP game assets"       "$BCK_DIR/Emus/PSP/.config/ppsspp/PSP/GAME/"           "/mnt/SDCARD/Emus/PSP/PPSSPP/.config/ppsspp/PSP/GAME/" "*"
+restore_files "PPSSPP textures"          "$BCK_DIR/Emus/PSP/.config/ppsspp/PSP/TEXTURES/"       "/mnt/SDCARD/Emus/PSP/PPSSPP/.config/ppsspp/PSP/TEXTURES/" "*"
+restore_files "PPSSPP game settings"     "$BCK_DIR/Emus/PSP/.config/ppsspp/PSP/SYSTEM/"         "/mnt/SDCARD/Emus/PSP/PPSSPP/.config/ppsspp/PSP/SYSTEM/" "*_ppsspp.ini"
+
+# Restore PPSSPP 1.17.1 standalone saves, savestates and retroachievements (JukaMix path > 1.1.0)
+restore_files "PPSSPP 1.17.1 saves"             "$BCK_DIR/Emus/PSP/PPSSPP_1.17.1/.config/ppsspp/PSP/SAVEDATA/"     "/mnt/SDCARD/Emus/PSP/PPSSPP/.config/ppsspp/PSP/SAVEDATA/" "*"
+restore_files "PPSSPP 1.17.1 savestates"        "$BCK_DIR/Emus/PSP/PPSSPP_1.17.1/.config/ppsspp/PSP/PPSSPP_STATE/" "/mnt/SDCARD/Emus/PSP/PPSSPP/.config/ppsspp/PSP/PPSSPP_STATE/" "*"
+restore_files "PPSSPP 1.17.1 retroachievements" "$BCK_DIR/Emus/PSP/PPSSPP_1.17.1/.config/ppsspp/PSP/SYSTEM/"       "/mnt/SDCARD/Emus/PSP/PPSSPP/.config/ppsspp/PSP/SYSTEM/" "*.dat"
+restore_files "PPSSPP 1.17.1 cheats"            "$BCK_DIR/Emus/PSP/PPSSPP_1.17.1/.config/ppsspp/PSP/Cheats/"       "/mnt/SDCARD/Emus/PSP/PPSSPP/.config/ppsspp/PSP/Cheats/" "*.ini"
+restore_files "PPSSPP 1.17.1 game assets"       "$BCK_DIR/Emus/PSP/PPSSPP_1.17.1/.config/ppsspp/PSP/GAME/"         "/mnt/SDCARD/Emus/PSP/PPSSPP/.config/ppsspp/PSP/GAME/" "*"
+restore_files "PPSSPP 1.17.1 textures"          "$BCK_DIR/Emus/PSP/PPSSPP_1.17.1/.config/ppsspp/PSP/TEXTURES/"     "/mnt/SDCARD/Emus/PSP/PPSSPP/.config/ppsspp/PSP/TEXTURES/" "*"
+restore_files "PPSSPP 1.17.1 game settings"     "$BCK_DIR/Emus/PSP/PPSSPP_1.17.1/.config/ppsspp/PSP/SYSTEM/"       "/mnt/SDCARD/Emus/PSP/PPSSPP/.config/ppsspp/PSP/SYSTEM/" "*_ppsspp.ini"
+
+# Restore Drastic standalone saves and savestates
+restore_files "Drastic saves"                   "$BCK_DIR/Emus/NDS/drastic/backup/"             "/mnt/SDCARD/Emus/NDS/drastic/backup/" "*"
+restore_files "Drastic savestates"              "$BCK_DIR/Emus/NDS/drastic/savestates/"         "/mnt/SDCARD/Emus/NDS/drastic/savestates/" "*"
+
+# Restore Mupen standalone saves and savestates
+restore_files "Mupen saves"                     "$BCK_DIR/Emus/N64/mupen64plus/save/"           "/mnt/SDCARD/Emus/N64/mupen64plus/save/" "*"
+
+# Restore mGBA standalone savestates (saves are in Roms folder)
+restore_files "mGBA saves"                     "$BCK_DIR/Emus/GBA/.config/mgba/savestates/"     "/mnt/SDCARD/Emus/GBA/.config/mgba/savestates/" "*"
+
+# Restore AdvanceMame standalone savestates
+restore_files "AdvanceMame saves"              "$BCK_DIR/Emus/ADVMAME/.advance/sta/"            "/mnt/SDCARD/Emus/ADVMAME/.advance/sta/" "*"
+
+# Restore Saturn / yabasanshiro standalone savestates
+restore_files "Saturn saves"                   "$BCK_DIR/Emus/SATURN/.yabasanshiro/"            "/mnt/SDCARD/Emus/SATURN/.yabasanshiro/" "*" "--exclude=keymapv2.json"
+
+# Restore openMSX standalone parameters, saves and savestates
+restore_files "MSX saves"                      "$BCK_DIR/Emus/MSX2/.openMSX/"                   "/mnt/SDCARD/Emus/MSX2/.openMSX/" "*"
+
+# Dreamcast saves are located in BIOS folder -> nothing to do
+
+# Restore GZDoom standalone saves
+restore_files "GZDoom saves"                   "$BCK_DIR/Emus/DOOM/GZDoom/.config/gzdoom/"           "/mnt/SDCARD/Emus/DOOM/GZDoom/.config/gzdoom/" "*" "--exclude=*.pk3"
+
+# DC Standalone RetroAchievements
+SOURCE_FILE="$BCK_DIR/Emus/DC/flycast_v2.4/config/emu.cfg"
+TARGET_FILE="/mnt/SDCARD/Emus/DC/flycast_v2.4/config/emu.cfg"
+KEYS="Enabled HardcoreMode UserName Token"
+extract_keys "$KEYS" "$SOURCE_FILE" "$TARGET_FILE"
+
+# DC BIOS files new location
+restore_files "Restore DC BIOS files"           "$BCK_DIR/BIOS/dc/" "/mnt/SDCARD/BIOS/dc/flycast/" "*.bin"
+
+# Restore PICO-8 binaries & Splore BBS games
+restore_files "Restore PICO-8 binaries"         "$BCK_DIR/Emus/PICO/PICO8_Wrapper/bin/" "/mnt/SDCARD/Emus/PICO/PICO8_Wrapper/bin/" "*"
+restore_files "Restore PICO-8 Splore games"     "/mnt/SDCARD/Emus/PICO/PICO8_Wrapper/.lexaloffle/pico-8/bbs/carts" "/mnt/SDCARD/Roms/PICO/splore" "*"
+
+# PortMaster themes and runtimes
+move_without_replace "Restore PortMaster themes"       "$BCK_DIR/Apps/PortMaster/PortMaster/themes/" "/mnt/SDCARD/Apps/PortMaster/PortMaster/themes/"
+restore_files "Restore PortMaster runtimes"      "$BCK_DIR/Apps/PortMaster/PortMaster/libs/"  "/mnt/SDCARD/Apps/PortMaster/PortMaster/libs/" "*"
+
+# Restore user apps
+move_without_replace "Restore User Apps"       "$BCK_DIR/Apps/" "/mnt/SDCARD/Apps/"
+
+# Restore previous recordings
+restore_files "Video recordings"                "$BCK_DIR/Apps/ScreenRecorder/output/"      "/mnt/SDCARD/Videos/ScreenRecorder/" "*.mp4"
+
+# Restore Tailscale configuration
+restore_files "Restore Tailscale configuration" "$BCK_DIR/System/etc/tailscale/" "/mnt/SDCARD/System/etc/tailscale" "*"
+
+# Restore Syncthings configuration
+restore_files "Restore Syncthings configuration" "$BCK_DIR/System/etc/syncthing/" "/mnt/SDCARD/System/etc/syncthing" "*"
+
+# Ebook Reader
+move_without_replace "Restore Ebooks"            "$BCK_DIR/Apps/EbookReader/.mreader_store/" "/mnt/SDCARD/Apps/EbookReader/.mreader_store/"
+restore_files "Restore Ebook Reader settings"    "$BCK_DIR/Apps/EbookReader/Books/"          "/mnt/SDCARD/Apps/EbookReader/Books/"          "*"
+
+# Music Player
+restore_files "Restore Music Player current playlist"  "$BCK_DIR/Apps/MusicPlayer/.local/" "/mnt/SDCARD/Apps/MusicPlayer/.local/" "*"
+
+# Additional user libs (without sub directories)
+/mnt/SDCARD/System/bin/rsync  -f"- */" -f"+ *"  -av  "$BCK_DIR/System/lib/" "/mnt/SDCARD/System/lib/" --ignore-existing
+
+# Additional user bin files (with sub directories)
+restore_files "Restore additional bin files" "$BCK_DIR/System/bin/" "/mnt/SDCARD/System/bin/" "*" "--ignore-existing"
+
+# Restore JukaMix settings
+jq -s '.[1] * .[0]' $BCK_DIR/System/etc/jukamix.json /mnt/SDCARD/System/etc/jukamix.json >/tmp/jukamix.json && mv /tmp/jukamix.json /mnt/SDCARD/System/etc/jukamix.json
+sync
+
+# Restore current Retroarch overlay setting
+echo "${BLUE}=====================  Restoring Overlays/Ratio settings...  =====================${NC}"
+
+overlay_setting=$(/mnt/SDCARD/System/bin/jq -r '.["OVERLAYS"]' "/mnt/SDCARD/System/etc/jukamix.json")
+if [ ! "$overlay_setting" = "Overlays - max ratio" ]; then
+  "/mnt/SDCARD/Apps/SystemTools/Menu/EMULATORS##OVERLAYS (value)/$overlay_setting.sh" -s
+fi
+
+# Restore current Theme settings
+echo "${BLUE}=====================  Restoring theme settings...  =====================${NC}"
+
+json_file="/mnt/SDCARD/System/etc/jukamix.json"
+theme_pack=$(jq -r '."THEME PACK"' "$json_file")
+jukamix_style=$(jq -r '."JUKAMIX STYLE"' "$json_file")
+icons=$(jq -r '."ICONS"' "$json_file")
+backgrounds=$(jq -r '."BACKGROUNDS"' "$json_file")
+emu_labels=$(jq -r '."EMU LABELS"' "$json_file")
+current_theme=$(/usr/trimui/bin/systemval theme)
+current_theme=$(basename "$current_theme")
+
+# we create a temporary theme pack with previous settings and we apply it
+output_file="/tmp/${theme_pack}.sh"
+cat <<EOF > "$output_file"
+packname="$theme_pack"
+style="$jukamix_style"
+theme="$current_theme"
+icon="$icons"
+background="$backgrounds"
+emulabels="$emu_labels"
+
+. /mnt/SDCARD/System/usr/trimui/scripts/themepack_apply.sh
+EOF
+
+touch "/tmp/infoscreen_disabled"
+chmod a+x "$output_file"
+"$output_file" "/SystemTools/Menu/" # fake parameter to force mainui_state_update.sh to use the System Tool database
+
+
+# Restore click sound current state
+click_off="$BCK_DIR/Themes/$current_theme/sound/click-off.wav"
+click="$BCK_DIR/Themes/$current_theme/sound/click.wav"
+if [ -f "$click_off" ] && [ ! -f "$click" ]; then
+	"/mnt/SDCARD/Apps/SystemTools/Menu/SOUND##CLICK (state)/Click sound - Disable.sh"
+fi
+
+# Restore background music current state
+bgm_off="$BCK_DIR/Themes/$current_theme/sound/bgm-off.mp3"
+bgm="$BCK_DIR/Themes/$current_theme/sound/bgm.mp3"
+if [ -f "$bgm_off" ] && [ ! -f "$bgm" ]; then
+	"/mnt/SDCARD/Apps/SystemTools/Menu/SOUND##MUSIC (state)/Music - Disable.sh"
+fi
+
+# Restore top left logo current state
+logo_off="$BCK_DIR/Themes/$current_theme/skin/nav-logo-off.png"
+logo="$BCK_DIR/Themes/$current_theme/skin/nav-logo.png"
+if [ -f "$logo_off" ] && [ ! -f "$logo" ]; then
+	"/mnt/SDCARD/Apps/SystemTools/Menu/Imgs/ADVANCED SETTINGS##TOP LEFT LOGO (state)/Top-left logo - Disable.png"
+fi
+
+# repair favorite paths if the launchers have changed
+"/mnt/SDCARD/Apps/SystemTools/Menu/TOOLS/Favorites - Fix No Emus.sh"
+
+rm "/tmp/infoscreen_disabled"
+
+
+# Restore Scraper settings
+jq -s '.[1] * .[0]' $BCK_DIR/System/etc/scraper.json /mnt/SDCARD/System/etc/scraper.json >/tmp/scraper.json && mv /tmp/scraper.json /mnt/SDCARD/System/etc/scraper.json
+sync
+
+# restore user additional themes, icons, Backgrounds
+move_without_replace "Restore Themes"                   "$BCK_DIR/Themes/"       "/mnt/SDCARD/Themes/"
+move_without_replace "Restore Backgrounds"              "$BCK_DIR/Backgrounds/" "/mnt/SDCARD/Backgrounds/"
+move_without_replace "Restore Icons"                    "$BCK_DIR/Icons/"       "/mnt/SDCARD/Icons/"
+
+echo "${BLUE}======================  Fix potential bad Roms folders... ======================${NC}"
+
+repair_rom_path "/mnt/SDCARD/Roms/PPSSPP" "/mnt/SDCARD/Roms/PSP"
+repair_rom_path "/mnt/SDCARD/Roms/3DO" "/mnt/SDCARD/Roms/PANASONIC"
+repair_rom_path "/mnt/SDCARD/Roms/OPERA" "/mnt/SDCARD/Roms/PANASONIC"
+repair_rom_path "/mnt/SDCARD/Roms/ARCADE_FBNEO" "/mnt/SDCARD/Roms/FBNEO"
+repair_rom_path "/mnt/SDCARD/Roms/PICO8" "/mnt/SDCARD/Roms/PICO"
+repair_rom_path "/mnt/SDCARD/Roms/FFMPEG" "/mnt/SDCARD/Roms/VIDEOS"
+repair_rom_path "/mnt/SDCARD/Roms/32X" "/mnt/SDCARD/Roms/SEGA32X"
+repair_rom_path "/mnt/SDCARD/Roms/COL" "/mnt/SDCARD/Roms/COLECO"
+repair_rom_path "/mnt/SDCARD/Roms/INT" "/mnt/SDCARD/Roms/INTELLIVISION"
+repair_rom_path "/mnt/SDCARD/Roms/SCD" "/mnt/SDCARD/Roms/SEGACD"
+repair_rom_path "/mnt/SDCARD/Roms/SS" "/mnt/SDCARD/Roms/SATURN"
+repair_rom_path "/mnt/SDCARD/Roms/SNES" "/mnt/SDCARD/Roms/SFC"
+repair_rom_path "/mnt/SDCARD/Roms/NES" "/mnt/SDCARD/Roms/FC"
+repair_rom_path "/mnt/SDCARD/Roms/MEGADRIVE" "/mnt/SDCARD/Roms/MD"
+repair_rom_path "/mnt/SDCARD/Roms/GENESIS" "/mnt/SDCARD/Roms/MD"
+repair_rom_path "/mnt/SDCARD/Roms/DS" "/mnt/SDCARD/Roms/NDS"
+/mnt/SDCARD/System/usr/trimui/scripts/reset_list.sh "PSP"
+
+# Move ScummVM games to "GAMES" subfolder
+for item in /mnt/SDCARD/Roms/SCUMMVM/*; do
+  basename_item="$(basename "$item")"
+  case "$basename_item" in
+  "° Import ScummVM Games.launch" | "° Run ScummVM.launch" | "GAMES") ;;
+  *)
+    mv "$item" "/mnt/SDCARD/Roms/SCUMMVM/GAMES/"
+    rm "/mnt/SDCARD/Roms/SCUMMVM/GAMES/"*.db
+    ;;
+  esac
+done
+
+# Clean Best collection: remove old Wordyl versions (old and current pack paths).
+rm "/mnt/SDCARD/Best/Free Games Collection/Roms/GB/GB-Wordyl/gb-wordyl_1.0.5_mbc5_"* 2>/dev/null || true
+rm "/mnt/SDCARD/Best/FreeGamesCollection/Roms/GB/GB-Wordyl/gb-wordyl_1.0.5_mbc5_"* 2>/dev/null || true
+
+
+# be sure that some JukaMix apps are refreshed
+rm /mnt/SDCARD/Apps/SystemTools/Menu/Menu_cache7.db
+rm /mnt/SDCARD/Apps/Scraper/Menu/Menu_cache7.db
+
+# remove old led scripts (JukaMix 1.3.5 now uses SmartLed)
+rm "/mnt/SDCARD/System/etc/led_config.sh"
+
+echo "${BLUE}============== Installation completed, rebooting in 10 seconds... ==============${NC}"
+
+
+echo ondemand >/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+echo 1008000 >/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+echo 1008000 >/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+rm /tmp/stay_awake
+sync
+sleep 10
+
+if [ -f /mnt/SDCARD/System/bin/shutdown ]; then
+  /mnt/SDCARD/System/bin/shutdown -r
+else
+  reboot &
+fi
+sleep 30
+
+}
+
+
+restore_files() {
+  # Copy with overwrite
+  local NAME="$1"
+  local SRC_DIR="$2"
+  local DST_DIR="$3"
+  local FILE_PATTERN="$4"
+  local OPTION="$5"
+
+  if [ "$OPTION" = "No_Overwrite" ]; then
+    OPTION="--ignore-existing"
+  fi
+  if [ -z "$FILE_PATTERN" ]; then
+    FILE_PATTERN="*"
+  fi
+  echo "------------------------------------------------------------------------------"
+  if [ -n "$(find "$SRC_DIR" -mindepth 1 -name "$FILE_PATTERN" -print -quit 2>/dev/null)" ]; then
+    echo -e "$NAME: restoring files...\n"
+    mkdir -p "$DST_DIR"
+    /mnt/SDCARD/System/bin/rsync --stats -av $OPTION --include="*/" --include="$FILE_PATTERN" --exclude="*" "$SRC_DIR/" "$DST_DIR/"
+    sync
+  else
+    echo "$NAME: No files to restore."
+  fi
+}
+
+# Merge RetroArch saves/states from per-ROM/per-CORE subfolders into per per-CORE only
+# (new structure since JukaMix 1.3.5).
+# - For each subfolder under /mnt/SDCARD/Roms, if a same-named folder exists in SRC,
+#   copy its CONTENTS into DST (flattened).
+# - Files at the root of SRC are copied directly into DST.
+# - Folders in SRC that don't match any ROM subfolder are copied as-is into DST.
+migrate_ra_flat() {
+  local NAME="$1"       # Friendly name for logs
+  local SRC_DIR="$2"    # Source directory (backup) without trailing slash
+  local DST_DIR="$3"    # Destination directory (current)
+
+  echo "------------------------------------------------------------------------------"
+
+  if [ ! -d "$SRC_DIR" ] || [ -z "$(find "$SRC_DIR" -mindepth 1 -maxdepth 1 2>/dev/null | head -n1)" ]; then
+    echo "$NAME: No files to restore."
+    return 0
+  fi
+
+  echo -e "$NAME: migrating files (flatten by ROM folders)...\n"
+  mkdir -p "$DST_DIR"
+
+  # Build the ROM folder name list
+  local tmp_roms
+  tmp_roms=$(mktemp)
+  for romdir in /mnt/SDCARD/Roms/*; do
+    [ -d "$romdir" ] || continue
+    basename "$romdir"
+  done | sort -u >"$tmp_roms"
+
+  # 1) For each ROM folder, if matching folder exists in backup, copy its CONTENTS to DST
+  while IFS= read -r romname; do
+    [ -n "$romname" ] || continue
+    if [ -d "$SRC_DIR/$romname" ]; then
+      /mnt/SDCARD/System/bin/rsync -av "$SRC_DIR/$romname/" "$DST_DIR/"
+    fi
+  done <"$tmp_roms"
+
+  # 2) Copy root-level files from SRC to DST
+  #    (Only files directly in SRC, not in subfolders)
+  if ls -1A "$SRC_DIR" 2>/dev/null | grep -q .; then
+    for f in "$SRC_DIR"/*; do
+      [ -f "$f" ] || continue
+      /mnt/SDCARD/System/bin/rsync -av "$f" "$DST_DIR/"
+    done
+  fi
+
+  # 3) Copy unmatched directories from SRC to DST as-is
+  for d in "$SRC_DIR"/*; do
+    [ -d "$d" ] || continue
+    base=$(basename "$d")
+    if ! grep -Fxq "$base" "$tmp_roms"; then
+      /mnt/SDCARD/System/bin/rsync -av "$d" "$DST_DIR/"
+    fi
+  done
+
+  rm -f "$tmp_roms"
+  sync
+}
+
+move_without_replace() {
+  local NAME="$1"
+  local SRC_DIR="$2"
+  local DST_DIR="$3"
+
+  [ -d "$SRC_DIR" ] || {
+    echo "Source directory $SRC_DIR missing."
+    return 1
+  }
+  mkdir -p "$DST_DIR"
+
+  echo "------------------------------------------------------------------------------"
+
+  echo -e "$NAME: moving files...\n"
+
+  for item in "$SRC_DIR"/*; do
+    [ -e "$item" ] || continue
+    item_name=$(basename "$item")
+    [ -e "$DST_DIR/$item_name" ] || mv "$item" "$DST_DIR/"
+  done
+}
+
+# Function to move files and directories
+move_items() {
+  # List of directories to exclude
+  EXCLUDE_DIRS="
+  /mnt/SDCARD/Data
+  /mnt/SDCARD/BIOS
+  /mnt/SDCARD/Best
+  /mnt/SDCARD/Imgs
+  /mnt/SDCARD/Roms
+  /mnt/SDCARD/_Updates
+  $UPDATE_FILE
+  "
+
+  for item in /mnt/SDCARD/*; do
+    excluded=0
+    for excl in $EXCLUDE_DIRS; do
+      if [ "$item" = "$excl" ]; then
+        excluded=1
+        break
+      fi
+    done
+
+    if [ $excluded -eq 0 ]; then
+      mv "$item" "$BCK_DIR/"
+      sync
+    fi
+  done
+
+  readme_text="This folder contains a backup of previous JukaMix OS v$Local_JukaMixVersion files.\n
+Normally, all saves and save states have been migrated during the automated update process.\n
+After an update, it is recommended to keep this folder for some time. Once you have spent some time on JukaMix OS and verified that all your saves and settings are functional, you can delete this \"_update\" directory to free up storage space on your SD card."
+
+  echo -e "$readme_text" >"/mnt/SDCARD/_Updates/ReadMe.txt"
+  sync
+}
+
+# Function to copy specified keys from a RetroArch configuration file to another
+extract_keys() {
+  local keys="$1"        # Space-separated list of keys
+  local source_file="$2" # Source configuration file
+  local target_file="$3" # Target file to save the extracted keys
+
+  local temp_file=$(mktemp)
+
+  for key in $keys; do
+    grep "^$key" "$source_file" >>"$temp_file"
+  done
+
+  /mnt/SDCARD/System/usr/trimui/scripts/patch_ra_cfg.sh "$temp_file" "$target_file"
+
+  echo "The following keys have been exported to $target_file:"
+  echo "$keys"
+}
+
+repair_rom_path() {
+  local src_path=$1
+  local dest_path=$2
+
+  if [ -d "$src_path" ]; then
+    if [ "$(ls -A "$src_path")" ]; then
+      mkdir -p "$dest_path"
+      mv "$src_path"/* "$dest_path/"
+      rm "$dest_path/"*.db
+    fi
+    rmdir "$src_path"
+  fi
+}
+
+main

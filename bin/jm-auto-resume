@@ -1,0 +1,22 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+cmd=${1:-show}
+file="$JM_STATE/auto_resume.env"
+
+case $cmd in
+    set)
+        system=${2:-unknown}; game=${3:-}; state=${4:-}
+        [ -n "$game" ] || exit 2
+        {
+            printf 'system=%s\n' "$system"
+            printf 'game=%s\n' "$game"
+            printf 'state=%s\n' "$state"
+            printf 'updated=%s\n' "$(jm_epoch)"
+        } | jm_atomic_write "$file"
+        ;;
+    show) [ -f "$file" ] && cat "$file";;
+    clear) rm -f "$file";;
+    *) echo "usage: jm-auto-resume set SYSTEM GAME [STATE] | show | clear" >&2; exit 2;;
+esac

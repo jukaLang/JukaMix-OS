@@ -1,0 +1,33 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+
+profile=${1:-balanced}
+case $profile in battery|balanced|performance|maximum) ;; *) echo "invalid profile" >&2; exit 2;; esac
+observe=$(jm_config_get observe_only 1)
+
+# Keep the hardware mapping isolated and conservative. Unsupported paths are skipped.
+case $profile in
+    battery) governor=powersave;;
+    balanced) governor=schedutil;;
+    performance|maximum) governor=performance;;
+esac
+
+if [ "$observe" = 1 ]; then
+    jm_log INFO "observe-only profile=$profile governor=$governor"
+    printf '%s\n' "$profile" | jm_atomic_write "$JM_STATE/current_profile"
+    exit 0
+fi
+
+changed=0
+for path in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_governor; do
+    [ -w "$path" ] || continue
+    available=$(cat "$(dirname "$path")/scaling_available_governors" 2>/dev/null || printf '')
+    case " $available " in
+        *" $governor "*) printf '%s\n' "$governor" > "$path" && changed=1;;
+    esac
+done
+
+printf '%s\n' "$profile" | jm_atomic_write "$JM_STATE/current_profile"
+jm_log INFO "profile applied=$profile governor=$governor changed=$changed"

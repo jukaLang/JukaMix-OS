@@ -1,0 +1,387 @@
+#!/bin/sh
+# JukaMix OS - PortMaster installer / updater / self-healer.
+#
+# One command to get PortMaster running on any supported TrimUI device
+# (Smart Pro "tsp", Smart Pro S "tg5050", Brick "brick"):
+#
+#   jm-portmaster status          Show install status (read-only)
+#   jm-portmaster install         Download the latest official release and install it
+#   jm-portmaster ensure          Install only if missing/broken; no-op when healthy
+#   jm-portmaster fix             Repair exec bits, ports dir and launcher (offline)
+#   jm-portmaster launch          Ensure, then launch the PortMaster GUI
+#
+# The official TrimUI build (trimui.portmaster.zip) from the PortMaster-GUI
+# releases is downloaded and verified against its published MD5 before it is
+# unpacked, so this never installs a tampered or truncated bundle.
+#
+# Offline install: place a PortMaster zip anywhere and run:
+#   jm-portmaster install --from-zip /path/to/trimui.portmaster.zip
+#
+# All paths are overridable (JUKAMIX_ROOT, JM_PM_APPS, ...) so the tool can be
+# tested from a host against a fixture tree.
+
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+
+PM_APPS=${JM_PM_APPS:-"$JM_ROOT/Apps/PortMaster"}
+PM_DIR=${JM_PM_DIR:-"$PM_APPS/PortMaster"}
+PM_DATA=${JM_PM_DATA:-"$JM_ROOT/Data/ports"}
+PM_ROMS=${JM_PM_ROMS:-"$JM_ROOT/Roms/PORTS"}
+PM_URL=${JM_PM_URL:-"https://github.com/PortsMaster/PortMaster-GUI/releases/latest/download/trimui.portmaster.zip"}
+PM_URL_MD5=${JM_PM_URL_MD5:-"$PM_URL.md5"}
+PM_MIN_VER="20240101"   # refuse placeholders / ancient test bundles
+
+QUIET=0
+FORCE=0
+FROM_ZIP=""
+
+usage() {
+    cat <<EOF
+usage: jm-portmaster <command> [options]
+
+commands:
+  status                 Show install status (no changes)
+  install                Download + install the latest official PortMaster
+  ensure                 Install only if missing/broken; no-op when healthy
+  fix                    Repair exec bits, Data/ports and launcher (no network)
+  launch                 Ensure, then launch the PortMaster GUI
+
+options:
+  --from-zip PATH        Install from a local PortMaster zip (offline)
+  --force                Reinstall even when a healthy install is present
+  -q, --quiet            Suppress progress output
+  -h, --help             Show this help
+EOF
+}
+
+msg() {
+    [ "$QUIET" = 1 ] || printf '%s\n' "$*"
+}
+
+err() {
+    printf 'jm-portmaster: %s\n' "$*" >&2
+}
+
+# ---------------------------------------------------------------------------
+# State helpers
+# ---------------------------------------------------------------------------
+pm_version() {
+    [ -f "$PM_DIR/version" ] || return 1
+    _v=$(cat "$PM_DIR/version" 2>/dev/null | tr -d '\r\n[:space:]')
+    [ -n "$_v" ] || return 1
+    printf '%s\n' "$_v"
+}
+
+pm_installed() {
+    [ -d "$PM_DIR" ] || return 1
+    [ -x "$PM_DIR/pugwash" ] || return 1
+    _v=$(pm_version) || return 1
+    # Version sanity: must be a YYYY.MM.DD build newer than our floor.
+    _n=$(printf '%s' "$_v" | tr -cd '0-9')
+    [ -n "$_n" ] && [ "$_n" -ge "$PM_MIN_VER" ] || return 1
+    return 0
+}
+
+pm_data_ready() {
+    [ -d "$PM_DATA" ] || return 1
+    return 0
+}
+
+pm_launcher_present() {
+    [ -f "$PM_ROMS/PortMaster.sh" ]
+}
+
+pm_launcher() {
+    # Content of the Roms/PORTS/PortMaster.sh UI entry point.
+    # Self-heals the install on every launch, then opens the PortMaster GUI.
+    cat <<EOF
+#!/bin/sh
+# JukaMix OS - PortMaster entry point (auto-generated, safe to delete).
+# Installs or repairs PortMaster when needed, then opens the PortMaster app.
+JUKAMIX_ROOT="$JM_ROOT"
+if [ -x "$SELF_DIR/jm-portmaster" ]; then
+    "$SELF_DIR/jm-portmaster" ensure || { echo "PortMaster install failed - see System/logs/jukamix.log" >&2; exit 1; }
+else
+    [ -d "$PM_DIR" ] || { echo "PortMaster is not installed (missing $SELF_DIR/jm-portmaster)" >&2; exit 1; }
+fi
+exec /bin/sh "$PM_APPS/launch.sh"
+EOF
+}
+
+pm_ensure_launcher() {
+    [ -d "$PM_ROMS" ] || mkdir -p "$PM_ROMS" 2>/dev/null || return 1
+    # Regenerate only when missing or no longer ours.
+    if [ -f "$PM_ROMS/PortMaster.sh" ]; then
+        grep -q 'JukaMix OS - PortMaster entry point' "$PM_ROMS/PortMaster.sh" 2>/dev/null && return 0
+    fi
+    pm_launcher | jm_atomic_write "$PM_ROMS/PortMaster.sh" || return 1
+    chmod +x "$PM_ROMS/PortMaster.sh" 2>/dev/null
+    return 0
+}
+
+pm_fix() {
+    _fixed=0
+    if [ -d "$PM_DIR" ]; then
+        chmod -R +x "$PM_DIR" 2>/dev/null && _fixed=$((_fixed+1))
+    fi
+    mkdir -p "$PM_DATA" 2>/dev/null && _fixed=$((_fixed+1))
+    pm_ensure_launcher && _fixed=$((_fixed+1))
+    return 0
+}
+
+pm_device() {
+    if [ -n "${_PM_DEVICE_CACHE:-}" ]; then
+        printf '%s\n' "$_PM_DEVICE_CACHE"
+        return 0
+    fi
+    _c=$(cat /etc/trimui_device.txt 2>/dev/null | tr -d '[:space:]')
+    case ${_c:-} in
+        tsp|tg5050|brick) _PM_DEVICE_CACHE="$_c" ;;
+        *) _PM_DEVICE_CACHE=unknown ;;
+    esac
+    printf '%s\n' "$_PM_DEVICE_CACHE"
+}
+
+# ---------------------------------------------------------------------------
+# Download / checksum / extract
+# ---------------------------------------------------------------------------
+pm_have_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+pm_download() {
+    _url=$1
+    _out=$2
+    if pm_have_cmd curl; then
+        curl -fSL --connect-timeout 20 --retry 2 -o "$_out" "$_url" 2>/dev/null
+    elif pm_have_cmd wget; then
+        wget -q -T 30 -O "$_out" "$_url" 2>/dev/null
+    elif pm_have_cmd python3; then
+        python3 - "$_url" "$_out" <<'PY'
+import sys, urllib.request
+url, out = sys.argv[1], sys.argv[2]
+try:
+    urllib.request.urlretrieve(url, out)
+    sys.exit(0)
+except Exception:
+    sys.exit(1)
+PY
+    else
+        return 2
+    fi
+}
+
+pm_sha_ok() {
+    _file=$1
+    _expected=$2
+    [ -n "$_expected" ] || return 1
+    if pm_have_cmd md5sum; then
+        _got=$(md5sum "$_file" 2>/dev/null | awk '{print $1}')
+    elif pm_have_cmd md5; then
+        _got=$(md5 -q "$_file" 2>/dev/null)
+    else
+        return 1
+    fi
+    [ "$_got" = "$_expected" ]
+}
+
+pm_extract() {
+    _zip=$1
+    _base=$2
+    if pm_have_cmd unzip; then
+        unzip -q -o "$_zip" -d "$_base" 2>/dev/null
+    elif pm_have_cmd python3; then
+        python3 - "$_zip" "$_base" <<'PY'
+import sys, zipfile, os
+zip_path, base = sys.argv[1], sys.argv[2]
+with zipfile.ZipFile(zip_path) as zf:
+    for m in zf.infolist():
+        target = os.path.join(base, *m.filename.split("/"))
+        if m.filename.endswith("/"):
+            os.makedirs(target, exist_ok=True)
+        else:
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with zf.open(m) as src, open(target, "wb") as dst:
+                dst.write(src.read())
+PY
+    else
+        return 2
+    fi
+}
+
+# Locate the actual PortMaster directory inside an extracted zip, regardless of
+# whether the archive used Apps/PortMaster/PortMaster or a bare PortMaster/ root.
+pm_find_extracted() {
+    _base=$1
+    for _cand in \
+        "$_base/Apps/PortMaster/PortMaster" \
+        "$_base/PortMaster" \
+        "$_base"/*/PortMaster; do
+        if [ -x "$_cand/pugwash" ] && [ -f "$_cand/version" ]; then
+            printf '%s\n' "$_cand"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# ---------------------------------------------------------------------------
+# Install (from downloaded zip or --from-zip)
+# ---------------------------------------------------------------------------
+pm_install_from_zip() {
+    _zip=$1
+    [ -f "$_zip" ] || { err "zip not found: $_zip"; return 1; }
+    _base=${PM_APPS%/Apps/PortMaster}
+    [ -n "$_base" ] || _base="$JM_ROOT"
+    mkdir -p "$_base" 2>/dev/null || { err "cannot create $_base"; return 1; }
+
+    msg "Installing PortMaster from $_zip ..."
+
+    if [ -d "$PM_DIR" ]; then
+        _bk="$PM_DIR.old.$$"
+        mv "$PM_DIR" "$_bk" 2>/dev/null || { err "cannot back up existing PortMaster"; return 1; }
+    fi
+
+    if ! pm_extract "$_zip" "$_base"; then
+        err "extraction failed"
+        [ -n "${_bk:-}" ] && mv "$_bk" "$PM_DIR" 2>/dev/null
+        return 1
+    fi
+
+    _found=$(pm_find_extracted "$_base") || {
+        err "zip does not contain a PortMaster install (no pugwash/version found)"
+        [ -n "${_bk:-}" ] && mv "$_bk" "$PM_DIR" 2>/dev/null
+        return 1
+    }
+    if [ "$_found" != "$PM_DIR" ]; then
+        mkdir -p "$PM_DIR" 2>/dev/null
+        mv "$_found"/* "$PM_DIR/" 2>/dev/null || { err "cannot move extracted PortMaster into place"; return 1; }
+        rmdir "$_found" 2>/dev/null
+    fi
+
+    chmod -R +x "$PM_DIR" 2>/dev/null
+    rm -rf "${_bk:-}" 2>/dev/null
+
+    if pm_installed; then
+        msg "Installed PortMaster $(pm_version)"
+        pm_ensure_launcher
+        mkdir -p "$PM_DATA" 2>/dev/null
+        msg "PortMaster is ready - open Apps > PortMaster, or restart the UI to refresh the PORTS tab."
+        return 0
+    fi
+    err "install did not produce a valid PortMaster"
+    return 1
+}
+
+pm_install() {
+    if pm_installed && [ "$FORCE" = 0 ]; then
+        msg "PortMaster $(pm_version) is already installed (use --force to reinstall)."
+        pm_fix
+        return 0
+    fi
+
+    if [ -n "$FROM_ZIP" ]; then
+        pm_install_from_zip "$FROM_ZIP"
+        return $?
+    fi
+
+    msg "Downloading latest PortMaster from PortMaster-GUI releases ..."
+    _tmp="$JM_RUN/pm-$$"
+    mkdir -p "$_tmp" 2>/dev/null || { err "cannot create temp dir"; return 1; }
+    _zip="$_tmp/trimui.portmaster.zip"
+    _md5="$_tmp/trimui.portmaster.zip.md5"
+
+    if ! pm_download "$PM_URL" "$_zip"; then
+        err "download failed (no network?). Install offline with --from-zip."
+        rm -rf "$_tmp"
+        return 1
+    fi
+    if ! pm_download "$PM_URL_MD5" "$_md5"; then
+        err "could not fetch checksum; aborting to avoid installing an unverified zip"
+        rm -rf "$_tmp"
+        return 1
+    fi
+
+    _expected=$(awk 'NR==1 {print $1}' "$_md5" 2>/dev/null)
+    if ! pm_sha_ok "$_zip" "$_expected"; then
+        err "checksum mismatch - download is corrupt or tampered; aborting"
+        rm -rf "$_tmp"
+        return 1
+    fi
+
+    pm_install_from_zip "$_zip"
+    _rc=$?
+    rm -rf "$_tmp"
+    return "$_rc"
+}
+
+pm_status() {
+    _inst=no; _ver="-"
+    if pm_installed; then _inst=yes; _ver=$(pm_version); fi
+    _data=no;  pm_data_ready 2>/dev/null && _data=yes
+    _launch=no; pm_launcher_present 2>/dev/null && _launch=yes
+    _free=$(df -m "$JM_ROOT" 2>/dev/null | awk 'NR==2 {print $4}')
+    case $_free in ''|*[!0-9]*) _free=0;; esac
+    printf 'device=%s\n' "$(pm_device)"
+    printf 'installed=%s\n' "$_inst"
+    printf 'version=%s\n' "$_ver"
+    printf 'ports_dir=%s\n' "$_data"
+    printf 'launcher=%s\n' "$_launch"
+    printf 'free_mb=%s\n' "$_free"
+    printf 'dir=%s\n' "$PM_DIR"
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+[ $# -gt 0 ] || { usage; exit 2; }
+cmd=$1
+shift
+
+while [ $# -gt 0 ]; do
+    case $1 in
+        --from-zip) [ $# -ge 2 ] || { err "--from-zip needs a path"; exit 2; }; FROM_ZIP=$2; shift 2;;
+        --force) FORCE=1; shift;;
+        -q|--quiet) QUIET=1; shift;;
+        -h|--help) usage; exit 0;;
+        *) err "unknown option: $1"; exit 2;;
+    esac
+done
+
+case $cmd in
+    status)
+        pm_status
+        ;;
+    install)
+        pm_install
+        ;;
+    ensure)
+        if pm_installed; then
+            msg "PortMaster $(pm_version) is present and healthy."
+            pm_fix >/dev/null 2>&1
+            exit 0
+        fi
+        [ -n "$FROM_ZIP" ] && { pm_install_from_zip "$FROM_ZIP"; exit $?; }
+        if ! pm_have_cmd curl && ! pm_have_cmd wget && ! pm_have_cmd python3; then
+            err "no downloader available; install offline with --from-zip"
+            exit 1
+        fi
+        pm_install
+        ;;
+    fix)
+        pm_fix
+        msg "PortMaster files repaired."
+        ;;
+    launch)
+        if ! pm_installed; then
+            msg "PortMaster is missing - installing now ..."
+            pm_install || exit $?
+        fi
+        pm_fix >/dev/null 2>&1
+        exec /bin/sh "$PM_APPS/launch.sh"
+        ;;
+    *)
+        err "unknown command: $cmd"
+        usage
+        exit 2
+        ;;
+esac

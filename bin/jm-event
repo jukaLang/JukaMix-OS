@@ -1,0 +1,8 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+event=${1:-}
+[ -n "$event" ] || exit 2
+shift
+jm_emit "$event" "$@"

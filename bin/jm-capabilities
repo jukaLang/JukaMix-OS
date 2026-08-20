@@ -1,0 +1,48 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+
+refresh=0
+[ "${1:-}" = "--refresh" ] && refresh=1
+cache="$JM_STATE/capabilities.env"
+jm_init_dirs
+
+if [ "$refresh" -eq 0 ] && [ -s "$cache" ]; then
+    cat "$cache"
+    exit 0
+fi
+
+model=$(jm_read_first /etc/device_model /sys/firmware/devicetree/base/model 2>/dev/null | tr -d '\000\r\n' || true)
+[ -n "$model" ] || model="unknown"
+device_code=$(cat /etc/trimui_device.txt 2>/dev/null | tr -d '\000\r\n[:space:]')
+[ -n "$device_code" ] || device_code="unknown"
+case $device_code in
+    tsp) device_name="TrimUI Smart Pro";;
+    tg5050) device_name="TrimUI Smart Pro S (TG5050)";;
+    brick) device_name="TrimUI Brick";;
+    *) device_name="unknown";;
+esac
+cores=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || printf '0')
+memory_kb=$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || printf '0')
+governors=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors 2>/dev/null || printf 'unavailable')
+thermal=0; [ -r /sys/class/thermal/thermal_zone0/temp ] && thermal=1
+battery=0
+for b in /sys/class/power_supply/*/capacity; do [ -r "$b" ] && battery=1 && break; done
+wifi=0; [ -d /sys/class/net/wlan0 ] && wifi=1
+bluetooth=0; [ -d /sys/class/bluetooth ] && bluetooth=1
+
+{
+    printf 'model=%s\n' "$model"
+    printf 'device_code=%s\n' "$device_code"
+    printf 'device_name=%s\n' "$device_name"
+    printf 'cpu_cores=%s\n' "$cores"
+    printf 'memory_kb=%s\n' "$memory_kb"
+    printf 'governors=%s\n' "$governors"
+    printf 'thermal_sensor=%s\n' "$thermal"
+    printf 'battery_sensor=%s\n' "$battery"
+    printf 'wifi=%s\n' "$wifi"
+    printf 'bluetooth=%s\n' "$bluetooth"
+} | jm_atomic_write "$cache"
+
+cat "$cache"

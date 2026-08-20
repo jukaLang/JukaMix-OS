@@ -1,0 +1,43 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+
+source_path=${1:-}
+label=${2:-save}
+[ -e "$source_path" ] || { echo "source does not exist" >&2; exit 2; }
+
+min_mb=$(jm_config_get snapshot_min_free_mb 256)
+keep=$(jm_config_get snapshot_keep 5)
+jm_is_uint "$min_mb" || min_mb=256
+jm_is_uint "$keep" || keep=5
+
+free_kb=$(df -Pk "$JM_ROOT" 2>/dev/null | awk 'NR==2 {print $4}')
+jm_is_uint "$free_kb" || free_kb=0
+[ "$free_kb" -ge $((min_mb * 1024)) ] || {
+    "$SELF_DIR/jm-notify" push warning "Snapshot skipped: low free space"
+    exit 28
+}
+
+id=$(jm_safe_id "$source_path")
+dest_dir="$JM_VAR/snapshots/$id"
+mkdir -p "$dest_dir"
+stamp=$(date '+%Y%m%d-%H%M%S')
+archive="$dest_dir/${stamp}-$(printf '%s' "$label" | tr -cd 'A-Za-z0-9_.-').tar.gz"
+base=$(basename "$source_path")
+parent=$(dirname "$source_path")
+
+tmp="$archive.tmp.$$"
+tar -C "$parent" -czf "$tmp" -- "$base"
+mv -f "$tmp" "$archive"
+
+count=0
+for old in $(find "$dest_dir" -type f -name '*.tar.gz' 2>/dev/null | sort -r); do
+    [ -f "$old" ] || continue
+    count=$((count + 1))
+    [ "$count" -le "$keep" ] || rm -f -- "$old"
+done
+
+jm_log INFO "snapshot created source=$source_path archive=$archive"
+jm_emit snapshot-created "$source_path" "$archive"
+printf '%s\n' "$archive"

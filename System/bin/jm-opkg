@@ -1,0 +1,42 @@
+#!/bin/sh
+# jm-opkg - JukaMix package manager (opkg-compatible).
+#
+# Thin wrapper around tools/lib/jukamix-opkg.sh. It uses the shipped busybox
+# for tar/gunzip/sha256sum, so no stock-firmware binaries are required.
+#
+# Usage:
+#   jm-opkg update                      fetch the package index
+#   jm-opkg list [filter]               list available packages
+#   jm-opkg list-installed              list installed packages
+#   jm-opkg info <name>                 show package metadata
+#   jm-opkg files <name>                list files owned by an installed package
+#   jm-opkg install <name...>           install (resolves dependencies)
+#   jm-opkg remove <name...>            uninstall
+#   jm-opkg upgrade                     upgrade installed packages
+
+export PATH="/mnt/SDCARD/System/bin:/mnt/SDCARD/System/usr/trimui/scripts:$PATH"
+export LD_LIBRARY_PATH="/mnt/SDCARD/System/lib:/usr/trimui/lib:${LD_LIBRARY_PATH:-}"
+
+JUKAMIX_ROOT="${JUKAMIX_ROOT:-/mnt/SDCARD}"
+JUKAMIX_TOOLS_DIR="${JUKAMIX_TOOLS_DIR:-/mnt/SDCARD/System/jukamix}"
+[ -d "$JUKAMIX_TOOLS_DIR" ] || JUKAMIX_TOOLS_DIR="/mnt/SDCARD/tools"
+JUKAMIX_LIB_DIR="${JUKAMIX_LIB_DIR:-$JUKAMIX_TOOLS_DIR/lib}"
+JUKAMIX_OPKG_ROOT="${JUKAMIX_OPKG_ROOT:-/mnt/SDCARD}"
+
+. "$JUKAMIX_LIB_DIR/jukamix-opkg.sh"
+
+cmd="${1:-help}"
+shift || true
+
+case "$cmd" in
+	update)         jukamix_opkg_update "$@" ;;
+	upgrade)        jukamix_opkg_upgrade "$@" ;;
+	install)        jukamix_opkg_install "$@" ;;
+	remove)         jukamix_opkg_remove "$@" ;;
+	list)           jukamix_opkg_list "$@" ;;
+	list-installed) jukamix_opkg_list_installed "$@" ;;
+	info)           jukamix_opkg_info "$@" ;;
+	files)          jukamix_opkg_files "$@" ;;
+	-h|--help|help) sed -n '2,15p' "$0"; exit 0 ;;
+	*)              echo "unknown command: $cmd" >&2; sed -n '2,15p' "$0"; exit 2 ;;
+esac

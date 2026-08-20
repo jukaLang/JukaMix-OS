@@ -1,0 +1,12 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+
+raw=$(jm_read_first /sys/class/thermal/thermal_zone0/temp 2>/dev/null || printf '0')
+jm_is_uint "$raw" || raw=0
+if [ "$raw" -gt 1000 ]; then
+    printf '%s\n' $((raw / 1000))
+else
+    printf '%s\n' "$raw"
+fi

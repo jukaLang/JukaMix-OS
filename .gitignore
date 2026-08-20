@@ -1,0 +1,36 @@
+dist/
+*.zip
+*.sha256
+*.log
+.DS_Store
+Thumbs.db
+.env
+*.pem
+*.key
+.freebuff/project-id
+
+# Build artifacts produced by scripts/build_release.sh / CI into dist/ — never tracked.
+SHA256SUMS
+MANIFEST.json
+
+# OS chrome shipped on the SD card root — no functional value, only checksum noise.
+.VolumeIcon.icns
+autorun.inf
+
+# TrimUI firmware blobs: fetched on demand by scripts/fetch_firmware.sh
+# (sources listed in trimui/firmwares/firmware_sources.txt), never tracked.
+trimui/firmwares/firmware_*.7z*
+
+# Python bytecode (host-side py_compile runs)
+__pycache__/
+*.pyc
+
+# Ad-hoc test fixtures created while verifying the build pipeline — never track.
+.mini-*
+.opkg-test/
+.path-test/
+.stamp-test/
+.feed-test/
+
+# RetroArch cores archive: ~335MB, downloaded from releases at build time.
+RetroArch/.retroarch/cores/cores.7z

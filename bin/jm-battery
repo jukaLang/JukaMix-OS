@@ -1,0 +1,11 @@
+#!/bin/sh
+set -u
+for path in /sys/class/power_supply/*/capacity; do
+    if [ -r "$path" ]; then
+        value=$(cat "$path")
+        case $value in ''|*[!0-9]*) continue;; esac
+        printf '%s\n' "$value"
+        exit 0
+    fi
+done
+printf '100\n'

@@ -1,0 +1,27 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+
+[ -f "$JM_CONFIG" ] || { echo "missing config: $JM_CONFIG" >&2; exit 1; }
+errors=0
+seen=" "
+while IFS='=' read -r key value; do
+    case $key in ''|\#*) continue;; esac
+    case " $seen " in *" $key "*) echo "duplicate key: $key" >&2; errors=$((errors+1));; esac
+    seen="$seen$key "
+    case $key in
+        config_version|observe_only|thermal_warn_c|thermal_critical_c|thermal_hysteresis_c|battery_low_pct|battery_critical_pct|snapshot_keep|snapshot_min_free_mb|recent_limit|notification_limit|lock_stale_seconds|health_log_keep)
+            jm_is_uint "$value" || { echo "invalid unsigned integer: $key=$value" >&2; errors=$((errors+1)); }
+            ;;
+        *) echo "warning: unknown key: $key" >&2;;
+    esac
+done < "$JM_CONFIG"
+
+warn=$(jm_config_get thermal_warn_c 75)
+critical=$(jm_config_get thermal_critical_c 85)
+if jm_is_uint "$warn" && jm_is_uint "$critical" && [ "$critical" -le "$warn" ]; then
+    echo "thermal_critical_c must exceed thermal_warn_c" >&2
+    errors=$((errors+1))
+fi
+[ "$errors" -eq 0 ]

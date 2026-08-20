@@ -1,0 +1,7 @@
+{
+  "label": "System Update",
+  "icon": "icon.png",
+  "iconsel": "icon.png",
+  "launch": "launch.sh",
+  "description": "Check for and install JukaMix OS updates (checksum-verified)."
+}

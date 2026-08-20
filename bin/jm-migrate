@@ -1,0 +1,27 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+target=5
+current=$(jm_config_get config_version 0)
+jm_is_uint "$current" || current=0
+[ "$current" -le "$target" ] || { echo "configuration is newer than this tool" >&2; exit 3; }
+
+backup="$JM_VAR/backups/config-before-v${target}-$(date '+%Y%m%d-%H%M%S')"
+mkdir -p "$backup"
+[ -f "$JM_CONFIG" ] && cp -p "$JM_CONFIG" "$backup/"
+
+while [ "$current" -lt "$target" ]; do
+    next=$((current + 1))
+    migration="$JM_PREFIX/migrations/${current}-to-${next}.sh"
+    if [ -x "$migration" ]; then
+        "$migration"
+    fi
+    current=$next
+done
+
+tmp="$JM_STATE/.migrate.$$.tmp"
+awk -F= '$1!="config_version"' "$JM_CONFIG" 2>/dev/null > "$tmp"
+{ printf 'config_version=%s\n' "$target"; cat "$tmp"; } | jm_atomic_write "$JM_CONFIG"
+rm -f "$tmp"
+"$SELF_DIR/jm-config-check"

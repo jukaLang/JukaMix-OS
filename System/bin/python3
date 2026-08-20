@@ -1,0 +1,9 @@
+#!/bin/sh
+# python3 launcher for JukaMix OS.
+# Prefers the standalone CPython installed by tools/jukamix-python.sh, falling
+# back to the bundled CPython 3.11.
+sel=$(cat /mnt/SDCARD/System/etc/python-path.txt 2>/dev/null)
+if [ -n "$sel" ] && [ -x "$sel" ]; then
+    exec "$sel" "$@"
+fi
+exec /mnt/SDCARD/System/bin/python3.11 "$@"

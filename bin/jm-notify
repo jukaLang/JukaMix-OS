@@ -1,0 +1,36 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+
+cmd=${1:-list}
+queue="$JM_VAR/notifications/queue.tsv"
+limit=$(jm_config_get notification_limit 100)
+jm_is_uint "$limit" || limit=100
+jm_init_dirs
+
+case $cmd in
+    push)
+        severity=${2:-info}
+        shift 2 || true
+        message=$*
+        [ -n "$message" ] || exit 2
+        case $severity in info|warning|error) ;; *) severity=info;; esac
+        clean=$(printf '%s' "$message" | tr '\t\r\n' '   ')
+        # Prepend new entry, drop anything past the limit. No external tools.
+        _tmp="${queue}.tmp.$$"
+        printf '%s\t%s\t%s\n' "$(jm_epoch)" "$severity" "$clean" > "$_tmp"
+        if [ -f "$queue" ]; then
+            tail -n "$((limit - 1))" "$queue" >> "$_tmp"
+        fi
+        mv -f "$_tmp" "$queue"
+        ;;
+    list) [ -f "$queue" ] && cat "$queue";;
+    pop)
+        [ -s "$queue" ] || exit 0
+        head -n 1 "$queue"
+        tail -n +2 "$queue" | jm_atomic_write "$queue"
+        ;;
+    clear) : | jm_atomic_write "$queue";;
+    *) echo "usage: jm-notify push LEVEL MESSAGE | list | pop | clear" >&2; exit 2;;
+esac

@@ -1,0 +1,181 @@
+name: JukaMix-OS Release
+
+permissions:
+  id-token: "write"
+  contents: "write"
+  packages: "write"
+  pull-requests: "read"
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release stamp (defaults to a date-time stamp like 0820202614 = Aug 20, 2026, 14:00)"
+        required: false
+      skip_firmware:
+        description: "Skip fetching TrimUI firmware blobs (no download URLs configured yet; uncheck to run the fetch)"
+        type: boolean
+        default: true
+
+jobs:
+  release:
+    name: Build and release
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Phase 1: independent downloads / tools (no repo needed) ──────────
+      - name: Get version
+        # Release builds are named JukaMix_<stamp>, where the stamp is the build
+        # date+hour (MMDDYYYYHH, e.g. 0820202614 = Aug 20, 2026, 14:00). The
+        # version input overrides the stamp for manual runs.
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            BUILD_VERSION="${{ github.event.inputs.version }}"
+          else
+            BUILD_VERSION=$(date +%m%d%Y%H)
+          fi
+          [ -n "$BUILD_VERSION" ] || { echo "version is empty" >&2; exit 1; }
+          echo "BUILD_VERSION=${BUILD_VERSION}" >> $GITHUB_ENV
+      - name: Install 7-Zip
+        # p7zip-full ships 7zr, which handles both 7z extraction and creation
+        # (what the cores + default_config steps need). Using Ubuntu's apt
+        # archive instead of www.7-zip.org avoids the version-churn 404s:
+        # 7-Zip retires previous tarballs each major release (7z2406-* vanished
+        # mid-2026), which broke the build.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq p7zip-full
+          which 7zr
+
+      # ── Phase 2: clone + repo-dependent work ─────────────────────────────
+      # Shallow clone (default) — the tree is ~3.7 GB, so history would make
+      # the download worse. fetch-depth: 1 is explicit so nobody "fixes" it.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Fetch firmware blobs
+        # Skip by default: trimui/firmwares/firmware_sources.txt has no download
+        # URLs configured yet, so the fetch cannot succeed on an ephemeral runner.
+        # Flip the skip_firmware input when the canonical TrimUI firmware URL is
+        # configured. Pushes always skip; only an explicit dispatch can opt in.
+        env:
+          JUKAMIX_SKIP_FIRMWARE: ${{ (github.event_name == 'push' || inputs.skip_firmware == 'true') && '1' || '' }}
+        run: |
+          cd /home/runner/work/JukaMix-OS/JukaMix-OS
+          bash scripts/fetch_firmware.sh
+      - name: Fetch RetroArch cores archive
+        # cores.7z (~335MB) is too large for git; hosted at
+        # https://github.com/jukaLang/Packages/releases/download/cores/cores.7z
+        run: |
+          cd /home/runner/work/JukaMix-OS/JukaMix-OS
+          bash scripts/fetch_cores.sh
+      - name: Extract RetroArch cores
+        # Extract all 165 cores (~1.8GB uncompressed). The archive is deleted
+        # after extraction so it doesn't ship in the release zip.
+        run: |
+          cd /home/runner/work/JukaMix-OS/JukaMix-OS/RetroArch/.retroarch/cores
+          7zr x cores.7z
+          rm cores.7z
+      - name: Cleaning image...
+        run: |
+          find /home/runner/work/JukaMix-OS/JukaMix-OS -type f -name ".gitkeep" -delete
+          rm -rf /home/runner/work/JukaMix-OS/JukaMix-OS/_assets
+          rm /home/runner/work/JukaMix-OS/JukaMix-OS/LICENSE
+          rm /home/runner/work/JukaMix-OS/JukaMix-OS/README.md
+          rm -rf /home/runner/work/JukaMix-OS/JukaMix-OS/_assets
+          rm /home/runner/work/JukaMix-OS/JukaMix-OS/LICENSE
+          rm /home/runner/work/JukaMix-OS/JukaMix-OS/README.md
+          rm -rf /home/runner/work/JukaMix-OS/JukaMix-OS/.git
+          rm -rf /home/runner/work/JukaMix-OS/JukaMix-OS/.github
+          cd /home/runner/work/JukaMix-OS/JukaMix-OS
+          7zr a RetroArch/default_config.7z RetroArch/retroarch.cfg RetroArch/.retroarch/config/*
+      - name: Stamp OS version
+        # Must run before the OTA manifest and device gate: both hash/verify
+        # the version file, so it has to match what the archive ships.
+        run: |
+          cd /home/runner/work/JukaMix-OS/JukaMix-OS
+          printf '%s\n' "${{ env.BUILD_VERSION }}" > System/usr/trimui/jukamix-version.txt
+      - name: Stamp JukaHub patch index
+        # Match build_release.sh: the shipped packages.json must reference the
+        # release that contains it, otherwise JukaHub's Patch view 404s.
+        # Shared logic lives in scripts/stamp_jukahub.py.
+        run: |
+          cd /home/runner/work/JukaMix-OS/JukaMix-OS
+          python3 scripts/stamp_jukahub.py Apps/JukaHub/patch/packages.json "${{ env.BUILD_VERSION }}"
+      - name: Restore executable bits
+        # Git clones made on Windows do not record the executable bit; restore
+        # it for every shebang script and ELF binary so the archive boots.
+        # The inner sh must exit 0: GNU find propagates a non-zero -exec status
+        # (the last [ ] test fails for any non-shebang file), which would fail
+        # this step under -e.
+        run: |
+          cd /home/runner/work/JukaMix-OS/JukaMix-OS
+          find . -type f -exec sh -c '
+            for f do
+              [ "$(head -c 2 "$f" 2>/dev/null)" = "#!" ] && { chmod +x "$f"; continue; }
+              [ "$(head -c 4 "$f" 2>/dev/null)" = "$(printf "\177ELF")" ] && chmod +x "$f"
+            done
+            exit 0
+          ' sh {} +
+      - name: Generate OTA manifest
+        # Generated after the exec-bit restore so the executable flags match
+        # what the archive ships. make-ota-manifest.sh skips the same paths the
+        # zip step excludes below (host scaffolding + protected user data).
+        run: |
+          cd /home/runner/work/JukaMix-OS/JukaMix-OS
+          bash tools/make-ota-manifest.sh . /home/runner/work/JukaMix-OS/manifest.txt
+      - name: Build JukaMix packages (opkg feed)
+        # Build every package in packages/ into an opkg feed (.ipk + Packages
+        # index). The feed is uploaded with the release; the on-device opkg.conf
+        # points at releases/latest/download, so jm-opkg always sees the newest
+        # feed without any version stamping.
+        run: |
+          set -e
+          cd /home/runner/work/JukaMix-OS/JukaMix-OS
+          mkdir -p /home/runner/work/JukaMix-OS/feed
+          for pkg in packages/*/; do
+            [ -f "$pkg/control" ] || continue
+            sh tools/jukamix-mkpackage.sh "$pkg" /home/runner/work/JukaMix-OS/feed
+          done
+          sh tools/jukamix-mkfeed.sh /home/runner/work/JukaMix-OS/feed
+          ls -la /home/runner/work/JukaMix-OS/feed
+      - name: Validate devices (tsp + tg5050 + brick)
+        run: |
+          cd /home/runner/work/JukaMix-OS/JukaMix-OS
+          bash scripts/validate_devices.sh . \
+            --devices "tsp tg5050 brick" \
+            --version "${{ env.BUILD_VERSION }}" \
+            --manifest /home/runner/work/JukaMix-OS/manifest.txt
+
+      # ── Phase 3: package (right at the end) ──────────────────────────────
+      - name: Zipping release
+        run: |
+          shopt -s dotglob
+          cd /home/runner/work/JukaMix-OS/JukaMix-OS
+          # Excludes mirror scripts/build_release.sh's stage (kept in sync):
+          # host-side scaffolding plus protected user-data dirs that the updater
+          # promises to never touch.
+          zip -r "/home/runner/work/JukaMix-OS/JukaMix_${{ env.BUILD_VERSION }}.zip" ./* \
+            -x "./scripts/*" -x "./tests/*" -x "./schemas/*" -x "./packages/*" \
+            -x "./Roms/*" -x "./ROMs/*" -x "./BIOS/*" -x "./Saves/*" -x "./States/*" \
+            -x "*.zip" -x "*.log" -x "./MANIFEST.json" -x "./jukauser.json" \
+            -x "./.VolumeIcon.icns" -x "./autorun.inf" \
+            -x "./.gitignore" -x "./.gitattributes"
+      - name: Create Release
+        id: release
+        uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          # Rebuilding the same version replaces the previous release (and its
+          # tag), so releases/latest always points at the newest build.
+          automatic_release_tag: "JukaMix_${{ env.BUILD_VERSION }}"
+          title: "JukaMix ${{ env.BUILD_VERSION }}"
+          prerelease: false
+          files: |
+            /home/runner/work/JukaMix-OS/JukaMix_${{ env.BUILD_VERSION }}.zip
+            /home/runner/work/JukaMix-OS/manifest.txt
+            /home/runner/work/JukaMix-OS/feed/*
+          draft: false

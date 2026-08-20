@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "packages": [
+    {
+      "id": "jukamix-os",
+      "name": "JukaMix OS",
+      "version": "0820202614",
+      "devices": "tsp,tg5050,brick",
+      "description": "JukaMix OS firmware update. Preferred path: Apps > System Update (transactional update driven by the release manifest). This entry is for JukaHub's Patch view. The version and release URLs are stamped by scripts/build_release.sh on every build with the date+hour stamp.",
+      "root": "",
+      "dest_root": "/mnt/SDCARD",
+      "archive_url": "https://github.com/jukaLang/JukaMix-OS/releases/download/JukaMix_0820202614/JukaMix_0820202614.zip",
+      "manifest_url": "https://github.com/jukaLang/JukaMix-OS/releases/download/JukaMix_0820202614/manifest.txt",
+      "files": [
+        { "src": "JukaMix_0820202614.zip", "dest": "/JukaMix_0820202614.zip" }
+      ]
+    },
+    {
+      "id": "jukahub",
+      "name": "JukaHub",
+      "version": "0.3.18",
+      "devices": "any",
+      "description": "JukaHub integrated app (v1 alpha). Installed automatically by tools/jukamix-jukahub.sh on first boot; Patch keeps it updated from the alpha release channel.",
+      "root": "",
+      "dest_root": "/mnt/SDCARD/JukaHub",
+      "archive_url": "https://github.com/jukaLang/JukaHub/releases/download/alpha/JukaHub.zip",
+      "archive_sha": "sha256:b1ff9c207ff2aeb2ee688dcb35182e0746b0095aaa963260a4d19edde35fb211",
+      "files": [
+        { "src": "JukaHub", "dest": "/JukaHub", "executable": true },
+        { "src": "jukaconfig.json", "dest": "/jukaconfig.json" }
+      ]
+    }
+  ]
+}

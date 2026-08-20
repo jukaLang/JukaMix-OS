@@ -1,0 +1,153 @@
+#!/bin/sh
+rm /tmp/nightmode
+UDISK_TIRMUI_DIR=/mnt/UDISK/trimui_dir
+SDCARD_TRIMUI_DIR=/mnt/SDCARD/trimui
+export LD_LIBRARY_PATH=/usr/trimui/lib:${SDCARD_TRIMUI_DIR}/lib
+
+rm -f /var/trimui_inputd/ra_hotkey
+
+runifnecessary() {
+    a=$(pgrep "$1")
+    if [ "$a" = "" ]; then
+        $2 &
+    fi
+}
+
+if [ -f "/mnt/SDCARD/trimui/app/cmd_to_run.sh" ]; then
+
+    resume_at_boot=$(/mnt/SDCARD/System/bin/jq -r '.["RESUME AT BOOT"]' "/mnt/SDCARD/System/etc/jukamix.json")
+    if [ "$resume_at_boot" -eq 0 ]; then
+        rm /mnt/SDCARD/trimui/app/cmd_to_run.sh
+        echo "The value of 'RESUME AT BOOT' is 0."
+        exit 1
+    fi
+
+    cd /usr/trimui/bin/
+    runifnecessary "keymon" /usr/trimui/bin/keymon
+    runifnecessary "inputd" /usr/trimui/bin/trimui_inputd
+    runifnecessary "scened" /usr/trimui/bin/trimui_scened
+    runifnecessary "trimui_btmanager" /usr/trimui/bin/trimui_btmanager
+    runifnecessary "hardwareservice" hardwareservice
+    mkdir -p /tmp/trimui_osd/
+    /mnt/SDCARD/System/usr/trimui/scripts/osd_hotkey.sh >/tmp/trimui_osd/hotkeyshow
+    cd /usr/trimui/osd
+    runifnecessary "trimui_osdd" /usr/trimui/osd/trimui_osdd
+
+    #########################################
+    # Set brightness
+    brightness_value=$(/usr/trimui/bin/systemval brightness)
+
+    min_brightness=0
+    max_brightness=10
+    min_LCD_Value=10
+    max_LCD_Value=250
+
+    LCD_Value=$((min_LCD_Value + (brightness_value - min_brightness) * (max_LCD_Value - min_LCD_Value) / (max_brightness - min_brightness)))
+
+    echo "LCD brightness value : $LCD_Value"
+
+    cd /sys/kernel/debug/dispdbg
+    echo lcd0 >name
+    echo setbl >command
+    echo $LCD_Value >param
+    echo 1 >start
+
+    #########################################
+    tinymix set 9 1
+    tinymix set 1 0
+    # Restore sound volume
+    amix_min=40
+    amix_max=1
+    soundlvl_max=20
+    soundlvl_value=$(/usr/trimui/bin/systemval vol)
+    if [ "$soundlvl_value" -eq 0 ]; then
+        volume=63
+    else
+        volume=$((amix_min - ((soundlvl_value * amix_min) / soundlvl_max)))
+    fi
+    echo "amixer digital volume set to $volume"
+    amixer -c 0 sset "digital volume" $volume
+
+    #########################################
+    # set wifi
+
+    wifi_value=$(/usr/trimui/bin/systemval wifi)
+    if [ "$wifi_value" -eq 1 ]; then
+
+        TIMEOUT=8                    # in seconds
+        INTERVAL=0.5                 # in seconds
+        MAX_RETRIES=$((TIMEOUT * 2)) # 0.5s interval → 2 retries per second
+        attempt_count=0
+
+        check_ip() {
+            ip addr show "wlan0" | grep -q "inet "
+        }
+
+        wait_for_ip() {
+            count=0
+            while [ $count -lt $MAX_RETRIES ]; do
+                if check_ip; then
+                    echo "[OK] IP address found on wlan0"
+                    return 0
+                else
+                    attempt_count=$((attempt_count + 1))
+                fi
+                sleep $INTERVAL
+                count=$((count + 1))
+            done
+            return 1
+        }
+
+        echo "[INFO] Checking if wlan0 has an IP address..."
+        if ! check_ip; then
+            echo "[INFO] No IP found. Triggering Wi-Fi ON..."
+            sleep 0.6 # necessary for hardwareservice initialization
+            mkdir -p "/tmp/system"
+            touch "/tmp/system/wifi_turn_on"
+
+            if ! wait_for_ip; then
+                echo "[WARN] Still no IP after first attempt. Cycling Wi-Fi..."
+                runifnecessary "hardwareservice" hardwareservice
+                sleep 1
+                touch "/tmp/system/wifi_turn_off"
+                sleep 2
+                touch "/tmp/system/wifi_turn_on"
+
+                if check_ip; then
+                    echo "IP acquired after $attempt_count attempt(s)."
+                else
+                    echo "[FAIL] No IP address acquired after $attempt_count attempts. Aborting."
+                fi
+            fi
+        else
+            echo "[INFO] IP address already present on wlan0."
+        fi
+    fi
+    #########################################
+
+    echo "Lets run"
+
+    # sleep 0.3 # delay necessary for input initialization
+    /mnt/SDCARD/System/usr/trimui/scripts/button_state.sh MENU
+    exit_code=$?
+    if [ $exit_code -eq 10 ]; then # we don't resume if menu is pressed during boot
+        echo "=== Button MENU pressed ==="
+        rm /mnt/SDCARD/trimui/app/cmd_to_run.sh
+        sync
+        # 3 fast blue blinking
+        echo 1 >/sys/class/led_anim/effect_enable
+        echo "0000FF" >/sys/class/led_anim/effect_rgb_hex_lr
+        echo 3 >/sys/class/led_anim/effect_cycles_lr
+        echo 200 >/sys/class/led_anim/effect_duration_lr
+        echo 5 >/sys/class/led_anim/effect_lr
+        exit
+    fi
+
+    cp /mnt/SDCARD/trimui/app/cmd_to_run.sh /tmp/cmd_to_run.sh
+    rm /mnt/SDCARD/trimui/app/cmd_to_run.sh
+    sync
+    /tmp/cmd_to_run.sh
+    exit 1
+else
+    exit 1
+fi

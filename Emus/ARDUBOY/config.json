@@ -1,0 +1,23 @@
+{
+  "label": "ARDUBOY",
+  "icon": "/mnt/SDCARD/Icons/Default/Emus/ARDUBOY.png",
+  "background": "/mnt/SDCARD/Backgrounds/Default/ARDUBOY.png",
+  "iconsel": "",
+  "launch": "default.sh",
+  "rompath": "../../Roms/ARDUBOY",
+  "imgpath": "../../Imgs/ARDUBOY",
+  "useswap": 0,
+  "shortname": 0,
+  "hidebios": 1,
+  "extlist": "",
+  "launchlist": [
+    {
+      "name": "Ardens",
+      "launch": "ardens.sh"
+    },
+    {
+      "name": "Arduous",
+      "launch": "arduous.sh"
+    }
+  ]
+}

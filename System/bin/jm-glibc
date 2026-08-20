@@ -1,0 +1,28 @@
+#!/bin/sh
+# jm-glibc - run a binary with the bundled latest glibc runtime.
+#
+# The firmware's own /lib/ld-linux-aarch64.so.1 may be older than what modern
+# software requires (GLIBC_x.y not found). This wrapper invokes the glibc 2.44
+# loader shipped in System/lib/glibc directly, so anything built against a
+# recent glibc runs regardless of the firmware version.
+#
+# Usage:
+#   jm-glibc /path/to/binary [args...]
+#   jm-glibc python3.13 myscript.py
+set -eu
+
+JM_SYSTEM="${JM_SYSTEM:-/mnt/SDCARD/System}"
+GLIBC_DIR="$JM_SYSTEM/lib/glibc"
+LOADER="$GLIBC_DIR/ld-linux-aarch64.so.1"
+
+[ -x "$LOADER" ] || {
+    echo "jm-glibc: glibc runtime not found at $LOADER" >&2
+    exit 127
+}
+[ "$#" -ge 1 ] || {
+    echo "usage: jm-glibc <binary> [args...]" >&2
+    exit 2
+}
+
+export LD_LIBRARY_PATH="$GLIBC_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+exec "$LOADER" --library-path "$GLIBC_DIR" --inhibit-cache "$@"

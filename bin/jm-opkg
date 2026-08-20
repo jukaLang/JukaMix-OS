@@ -1,0 +1,105 @@
+#!/bin/sh
+# jm-opkg - JukaMix OS package manager (opkg-compatible).
+#
+# Thin CLI wrapper around tools/lib/jukamix-opkg.sh. Packages install under
+# the SD card (read-only internal firmware is never touched) and are tracked
+# in System/var/jukamix/opkg so they can be removed or upgraded later.
+#
+# The feed is discovered from the first `src/gz` line in the shipped
+# System/etc/opkg/opkg.conf (releases/latest/download of the JukaMix-OS
+# repo), or from the JUKAMIX_OPKG_FEED environment variable.
+#
+# Usage:
+#   jm-opkg update                fetch the package index
+#   jm-opkg list [pattern]        list available packages
+#   jm-opkg list-installed        list installed packages
+#   jm-opkg info <name>           show package metadata
+#   jm-opkg files <name>          list files owned by an installed package
+#   jm-opkg install <name...>     install (resolves dependencies)
+#   jm-opkg remove <name...>      uninstall
+#   jm-opkg upgrade               upgrade installed packages
+#   jm-opkg status                feed, install root, state and arch
+
+set -u
+
+JM_ROOT="${JM_ROOT:-/mnt/SDCARD}"
+
+usage() {
+	sed -n '2,20p' "$0"
+	exit 0
+}
+
+# Locate the opkg client library (repo checkout, release image, or the
+# install.sh layout). tools/ ships in the image, so the image path always
+# exists on a device.
+_found=""
+for _cand in \
+	"$JM_ROOT/tools/lib/jukamix-opkg.sh" \
+	"$JM_ROOT/System/usr/jukamix/lib/jukamix-opkg.sh" \
+	"$(dirname "$0")/../tools/lib/jukamix-opkg.sh"
+do
+	if [ -f "$_cand" ]; then
+		. "$_cand"
+		_found=1
+		break
+	fi
+done
+unset _cand
+if [ -z "$_found" ]; then
+	echo "jm-opkg: client library not found (looked under $JM_ROOT)" >&2
+	exit 2
+fi
+unset _found
+
+_cmd="${1:-}"
+[ "$#" -gt 0 ] && shift
+
+case "$_cmd" in
+	update)
+		jukamix_opkg_update
+		;;
+	list)
+		jukamix_opkg_list "${1:-}"
+		;;
+	list-installed)
+		jukamix_opkg_list_installed
+		;;
+	info)
+		if [ "$#" -ge 1 ]; then jukamix_opkg_info "$1"; else
+			echo "usage: jm-opkg info <name>" >&2; exit 2
+		fi
+		;;
+	files)
+		if [ "$#" -ge 1 ]; then jukamix_opkg_files "$1"; else
+			echo "usage: jm-opkg files <name>" >&2; exit 2
+		fi
+		;;
+	install)
+		if [ "$#" -ge 1 ]; then jukamix_opkg_install "$@"; else
+			echo "usage: jm-opkg install <name...>" >&2; exit 2
+		fi
+		;;
+	remove)
+		if [ "$#" -ge 1 ]; then jukamix_opkg_remove "$@"; else
+			echo "usage: jm-opkg remove <name...>" >&2; exit 2
+		fi
+		;;
+	upgrade)
+		jukamix_opkg_upgrade
+		;;
+	status)
+		[ -n "${JUKAMIX_OPKG_FEED:-}" ] || JUKAMIX_OPKG_FEED="(not resolved)"
+		echo "feed:    $JUKAMIX_OPKG_FEED"
+		echo "root:    $JUKAMIX_OPKG_ROOT"
+		echo "state:   $JUKAMIX_OPKG_STATE"
+		echo "arch:    $JUKAMIX_OPKG_ARCH"
+		;;
+	-h|--help|help|"")
+		usage
+		;;
+	*)
+		echo "jm-opkg: unknown command: $_cmd" >&2
+		usage
+		exit 2
+		;;
+esac

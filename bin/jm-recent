@@ -1,0 +1,27 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+
+cmd=${1:-list}
+db="$JM_STATE/recent.tsv"
+limit=$(jm_config_get recent_limit 50)
+jm_is_uint "$limit" || limit=50
+jm_init_dirs
+
+case $cmd in
+    add)
+        system=${2:-unknown}
+        game=${3:-}
+        [ -n "$game" ] || exit 2
+        clean_system=$(printf '%s' "$system" | tr '\t\r\n' '   ')
+        clean_game=$(printf '%s' "$game" | tr '\t\r\n' '   ')
+        {
+            printf '%s\t%s\t%s\n' "$(jm_epoch)" "$clean_system" "$clean_game"
+            [ -f "$db" ] && awk -F '\t' -v g="$clean_game" '$3 != g' "$db"
+        } | head -n "$limit" | jm_atomic_write "$db"
+        ;;
+    list) [ -f "$db" ] && cat "$db";;
+    clear) : | jm_atomic_write "$db";;
+    *) echo "usage: jm-recent add SYSTEM GAME | list | clear" >&2; exit 2;;
+esac

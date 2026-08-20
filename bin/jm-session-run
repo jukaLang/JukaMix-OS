@@ -1,0 +1,66 @@
+#!/bin/sh
+set -u
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/../lib/common.sh"
+
+system=unknown
+game=
+requested=balanced
+
+while [ "$#" -gt 0 ]; do
+    case $1 in
+        --system) [ "$#" -ge 2 ] || exit 2; system=$2; shift 2;;
+        --game) [ "$#" -ge 2 ] || exit 2; game=$2; shift 2;;
+        --profile) [ "$#" -ge 2 ] || exit 2; requested=$2; shift 2;;
+        --) shift; break;;
+        *) echo "unknown argument: $1" >&2; exit 2;;
+    esac
+done
+
+[ -n "$game" ] || { echo "--game is required" >&2; exit 2; }
+[ "$#" -gt 0 ] || { echo "emulator command is required" >&2; exit 2; }
+
+session_id=$(jm_safe_id "$game")
+lock_name="session-$session_id"
+jm_lock_acquire "$lock_name" 30 || {
+    "$SELF_DIR/jm-notify" push warning "Game session is already active: $game"
+    exit 75
+}
+
+old_profile=$(cat "$JM_STATE/current_profile" 2>/dev/null || printf 'balanced')
+start=$(jm_epoch)
+finished=0
+
+cleanup() {
+    status=$?
+    trap - EXIT HUP INT TERM
+    end=$(jm_epoch)
+    elapsed=$((end - start))
+    [ "$elapsed" -lt 0 ] && elapsed=0
+    if [ "$finished" -eq 0 ]; then
+        "$SELF_DIR/jm-playtime" add "$game" "$elapsed" || true
+        jm_emit session-end "$system" "$game" "$status" "$elapsed"
+        "$SELF_DIR/jm-profile" "$old_profile" || true
+        rm -f "$JM_STATE/active_session.env"
+        jm_lock_release "$lock_name"
+        finished=1
+    fi
+    exit "$status"
+}
+trap cleanup EXIT HUP INT TERM
+
+recommended=$("$SELF_DIR/jm-adaptive-profile" "$requested" | awk '{print $1}')
+"$SELF_DIR/jm-profile" "$recommended"
+"$SELF_DIR/jm-recent" add "$system" "$game"
+
+{
+    printf 'system=%s\n' "$system"
+    printf 'game=%s\n' "$game"
+    printf 'started=%s\n' "$start"
+    printf 'profile=%s\n' "$recommended"
+    printf 'pid=%s\n' "$$"
+} | jm_atomic_write "$JM_STATE/active_session.env"
+
+jm_emit session-start "$system" "$game" "$recommended"
+"$@"
+exit $?

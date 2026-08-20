@@ -1,0 +1,229 @@
+#!/bin/sh
+romdir=/mnt/SDCARD/Roms/SCUMMVM
+imgdir=/mnt/SDCARD/Imgs/SCUMMVM
+scandir=/mnt/SDCARD/Emus/SCUMMVM/../../Roms/SCUMMVM/GAMES
+scummvm_config=/mnt/SDCARD/BIOS/scummvm.ini
+# for Imgs
+DAT_DIR=/mnt/SDCARD/Emus/SCUMMVM/ScummVM/icon
+DEST_DIR=/mnt/SDCARD/Imgs/SCUMMVM
+
+ui_title="ScummVM Import"
+naming_mode=0
+skip_scan=0 # We set it like this for JukaMix as we don't have ScummVM standalone
+
+if [ "$1" == "skip_scan" ]; then
+    skip_scan=1
+fi
+
+main() {
+    # prompt -t "$ui_title" -m "Choose naming scheme" \
+    # "Use database name" \
+    # "Use database name (no parens)" \
+    # "Use directory name" \
+    # "Use directory name (no parens)"
+    # naming_mode=$?
+    naming_mode=2 # We set it like this for JukaMix
+    echo -e "\n=================================== $ui_title ==================================="
+    echo "Naming scheme: $naming_mode"
+
+    Message="Importing ScummVM games"
+    infoscreen2.sh -m "$Message" -fi 0 -p top-left -fb -sp &
+	
+    if [ $skip_scan -eq 0 ]; then
+        # infoPanel -t "$ui_title" -m "Scanning..." --persistent 2> /dev/null &
+        echo -e "\nScanning...\n"
+        start=$(date +%s)
+
+        cd /mnt/SDCARD/Emus/SCUMMVM/ScummVM
+        HOME=/mnt/SDCARD/Emus/SCUMMVM/ScummVM
+        export SDL_GAMECONTROLLERCONFIG_FILE=./gamecontrollerdb.txt
+        export LD_LIBRARY_PATH=./lib:/mnt/SDCARD/System/lib/:/usr/lib:LD_LIBRARY_PATH
+
+        # ScummVM binary extraction
+        if [ ! -f "/mnt/SDCARD/Emus/SCUMMVM/ScummVM/scummvm" ]; then
+            /mnt/SDCARD/System/bin/7zz x "/mnt/SDCARD/Emus/SCUMMVM/ScummVM/scummvm.7z" -o"/mnt/SDCARD/Emus/SCUMMVM/ScummVM" && rm "/mnt/SDCARD/Emus/SCUMMVM/ScummVM/scummvm.7z"
+        fi
+
+        ./scummvm -c "$scummvm_config" -p "$scandir" --add --recursive 2>/dev/null
+        ./scummvm -p "$scandir" --add --recursive 2>/dev/null
+        end=$(date +%s)
+        echo -e "\n:: Scan finished in $((end - start))s"
+    fi
+
+    # if [ ! -f "$scummvm_config" ]; then
+    # infoPanel -t "$ui_title" -m "No scan found\n \nPlease run import first" --auto 2>/dev/null
+    # sleep 0.3
+    # exit
+    # fi
+
+    scummvm_result="$(cat "$scummvm_config")"
+
+    # removing all the old shortcuts
+    rm -f $romdir/*.scummvm 2>/dev/null
+    sync
+
+    # here we get all the targets names
+    echo "$scummvm_result" | sed -n 's/^[ \t]*\[\(.*\)\].*/\1/p' | (
+        start=$(date +%s)
+        count=0
+
+        while read target; do
+            # We skip the first Scummvm section which is not a game
+            if [ "$target" = "scummvm" ]; then continue; fi
+
+            # get the full name of the game:
+            description=$(echo "$scummvm_result" | sed -n "/^[ \t]*\["$target"]/,/\[/s/^[ \t]*description[ \t]*=[ \t]*//p")
+
+            # get the path of the game:
+            game_path=$(echo "$scummvm_result" | sed -n "/^[ \t]*\["$target"]/,/\[/s/^[ \t]*path[ \t]*=[ \t]*//p")
+
+            # get the ID of the game:
+            game_id=$(echo "$scummvm_result" | sed -n "/^[ \t]*\["$target"]/,/\[/s/^[ \t]*gameid[ \t]*=[ \t]*//p")
+
+            save_shortcut "$target" "$description" "$game_path"
+            extract_game_icon "$game_id"
+            move_duplicates
+            sync
+            let count++
+        done
+
+        end=$(date +%s)
+        echo -e "\n:: Parsed in $((end - start))s"
+
+        sync
+
+        if [ $count -eq 0 ]; then
+            result_message="No games found"
+        elif [ $count -eq 1 ]; then
+            result_message="Found 1 game"
+        else
+            result_message="Found $count games"
+        fi
+
+        echo -e "\n================================= DONE! $result_message =================================\n\n"
+            Message="$Message - Done\n$result_message"
+            infoscreen2.sh -m "$Message" -fi 0 -p top-left -fb -ts 3
+    )
+    sync
+
+    # Reset rom list and cache
+    /mnt/SDCARD/System/usr/trimui/scripts/reset_list.sh "SCUMMVM"
+}
+
+save_shortcut() {
+    target="$1"
+    description="$2"
+    game_path="$3"
+
+    full_name="$(escape_filename "$description")"
+    old_name="$(escape_filename_old "$description")"
+    full_name_n="$(remove_parens "$full_name")"
+    d_name="$(basename "$game_path")"
+    d_name_n="$(remove_parens "$d_name")"
+
+    echo -e "\n[$target]\n   name: $full_name\n   d_name: $d_name"
+
+    image_path="$imgdir/$full_name.png"
+    if [ ! -f "$image_path" ]; then
+        image_path="$imgdir/$old_name.png"
+        if [ ! -f "$image_path" ]; then
+            image_path="$imgdir/$full_name_n.png"
+            if [ ! -f "$image_path" ]; then
+                image_path="$imgdir/$d_name.png"
+                if [ ! -f "$image_path" ]; then
+                    image_path="$imgdir/$d_name_n.png"
+                fi
+            fi
+        fi
+    fi
+
+    if [ $naming_mode -eq 0 ]; then
+        name="$full_name"
+    elif [ $naming_mode -eq 1 ]; then
+        name="$full_name_n"
+    elif [ $naming_mode -eq 2 ]; then
+        name="$d_name"
+    elif [ $naming_mode -eq 3 ]; then
+        name="$d_name_n"
+    fi
+
+    name=$name
+    image_save_path="$imgdir/$name.png"
+    target_save_path="$romdir/$name.scummvm"
+
+    echo -ne "\n"
+
+    if [ "$image_path" != "$image_save_path" ] && [ -f "$image_path" ]; then
+        echo "   -> moving box art: '$(basename "$image_path")' -> '$(basename "$image_save_path")'"
+        mv "$image_path" "$image_save_path"
+    fi
+
+    if [ -f "$target_save_path" ]; then
+        target_save_path="$romdir/$name ($(echo "$target" | sed -e 's/:/, /g')).scummvm"
+    fi
+
+    echo "   -> \"$target\" > '$(basename "$target_save_path")'"
+    echo "$target" >"$target_save_path"
+}
+
+escape_filename() {
+    echo "$1" | sed -e 's/\s*:\s*/ - /g' | sed -e 's/\//, /g' | tr -cd "A-Z a-z0-9().,_'-"
+}
+
+escape_filename_old() {
+    echo "$1" | sed -e 's/: / - /g' | tr -cd "A-Z a-z0-9()._'-"
+}
+
+remove_parens() {
+    echo "$1" | sed -e 's/\s*([^)]*)//g' -e 's/\s*\[[^]]*\]//g'
+}
+
+move_duplicates() {
+
+    if [ "$game_id" = "$previous_ID" ]; then
+        mkdir -p "$romdir/duplicates"
+        mv "$target_save_path" "$romdir/duplicates"
+    fi
+    previous_ID=$game_id
+}
+
+extract_game_icon() {
+    if [ "$#" -ne 1 ]; then
+        echo "Usage: extract_game_icon <game_id>"
+        return 1
+    fi
+
+    GAME_ID="$1"
+    FOUND=0
+    echo "$GAME_ID"
+
+    for datfile in "$DAT_DIR"/*.dat; do
+        [ -f "$datfile" ] || continue
+        echo "$datfile"
+
+        FILES=$(/mnt/SDCARD/System/bin/7zz l -ba "$datfile" | awk '{print $NF}' | sed 's|\\|/|g')
+
+        MATCH=$(echo "$FILES" | grep -E "^icons/.*/?$GAME_ID\.png$")
+
+        if [ -n "$MATCH" ]; then
+            echo "✅ Game ID '$GAME_ID' found: $MATCH"
+            echo "📦 In archive: $(basename "$datfile")"
+            mkdir -p "$DEST_DIR"
+
+            # We retrieve the real internal path (with \ if necessary)
+            RAW_MATCH=$(/mnt/SDCARD/System/bin/7zz l -ba "$datfile" | awk '{print $NF}' | grep -E "icons[\\/].*$GAME_ID\.png$")
+
+            # Extract via stdout and rename directly
+            /mnt/SDCARD/System/bin/7zz e "$datfile" "$RAW_MATCH" -so >"$DEST_DIR/$(basename "${target_save_path%.scummvm}.png")"
+            FOUND=1
+            break
+        fi
+    done
+
+    if [ "$FOUND" -eq 0 ]; then
+        echo "❌ Game ID '$GAME_ID' not found in any .dat file."
+        return 2
+    fi
+}
+
+main
