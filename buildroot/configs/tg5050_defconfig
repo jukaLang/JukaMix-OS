@@ -2,6 +2,10 @@
 # Full tier: QT6, Wayland, Mesa3D, modern libraries
 # SoC: Allwinner A523 (Octa-core A53/A73, Mali-G57)
 # RAM: 2GB
+#
+# NOTE: This config requires a BR2_EXTERNAL tree with a pre-built external
+# toolchain. For CI/standalone builds, use build-rootfs.sh which writes
+# a self-contained defconfig using BR2_TOOLCHAIN_BUILDROOT_GLIBC.
 
 # Architecture
 BR2_aarch64=y

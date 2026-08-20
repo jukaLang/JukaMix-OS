@@ -2,6 +2,10 @@
 # Minimal tier: Modern glibc, no QT6/Wayland (too heavy for 1GB)
 # SoC: Allwinner A133 (Single-core A53, Mali-G31)
 # RAM: 1GB
+#
+# NOTE: This config requires a BR2_EXTERNAL tree with a pre-built external
+# toolchain. For CI/standalone builds, use build-rootfs.sh which writes
+# a self-contained defconfig using BR2_TOOLCHAIN_BUILDROOT_GLIBC.
 
 # Architecture
 BR2_aarch64=y

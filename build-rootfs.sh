@@ -43,21 +43,29 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 log_step() { echo -e "${BLUE}[STEP]${NC} $*"; }
 
-# Cleanup on failure
+# Cleanup on failure or interrupt
 cleanup_on_error() {
     local exit_code=$?
-    if [ $exit_code -ne 0 ]; then
+    if [ $exit_code -eq 130 ]; then
+        log_warn "Build interrupted by user (SIGINT)"
+    elif [ $exit_code -eq 143 ]; then
+        log_warn "Build terminated (SIGTERM)"
+    elif [ $exit_code -ne 0 ]; then
         log_error "Build failed with exit code $exit_code"
-        if [ -d "$LOG_DIR" ]; then
-            log_error "Build logs saved in $LOG_DIR/"
-            for f in "$LOG_DIR"/*.log; do
-                [ -f "$f" ] && log_error "  $f"
-            done
-        fi
-        log_error "Buildroot build logs: $BUILDROOT_DIR/buildroot-$BUILDROOT_VERSION/output/build/"
+    else
+        return 0
     fi
+    if [ -d "$LOG_DIR" ] && ls "$LOG_DIR"/*.log >/dev/null 2>&1; then
+        log_error "Build logs saved in $LOG_DIR/"
+        for f in "$LOG_DIR"/*.log; do
+            [ -f "$f" ] && log_error "  $f"
+        done
+    fi
+    log_error "Buildroot build logs: $BUILDROOT_DIR/buildroot-$BUILDROOT_VERSION/output/build/"
 }
 trap cleanup_on_error EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # Check if running on Linux
 check_linux() {
@@ -161,6 +169,7 @@ BR2_TARGET_ROOTFS_EXT2_4=y
 BR2_TARGET_ROOTFS_EXT2_SIZE="1G"
 BR2_TARGET_ROOTFS_EXT2_LABEL="BUILDROOT"
 BR2_TARGET_GENERIC_HOSTNAME="jukamix-tg5050"
+BR2_TARGET_GENERIC_ISSUE="Welcome to JukaMix OS (TG5050)"
 BR2_INIT_SYSV=y
 BR2_ROOTFS_DEVICE_CREATION_DYNAMIC_MDEV=y
 BR2_PACKAGE_BASH=y
@@ -202,6 +211,7 @@ BR2_TARGET_ROOTFS_EXT2_4=y
 BR2_TARGET_ROOTFS_EXT2_SIZE="512M"
 BR2_TARGET_ROOTFS_EXT2_LABEL="BUILDROOT"
 BR2_TARGET_GENERIC_HOSTNAME="jukamix-tsp-brick"
+BR2_TARGET_GENERIC_ISSUE="Welcome to JukaMix OS (TSP/Brick)"
 BR2_INIT_SYSV=y
 BR2_ROOTFS_DEVICE_CREATION_DYNAMIC_MDEV=y
 BR2_PACKAGE_BASH=y
@@ -261,6 +271,11 @@ build_device() {
     log_info "Resolving legacy configuration options..."
     make olddefconfig 2>&1 | tee -a "$logfile" | tail -5
     
+    # Save a clean minimal config (useful for debugging and reproducibility)
+    log_info "Saving clean config..."
+    make savedefconfig 2>&1 | tee -a "$logfile" | tail -3
+    cp defconfig "$OUTPUT_DIR/${output_name}_defconfig" 2>/dev/null || true
+    
     # Build with parallel jobs
     local nproc=$(nproc 2>/dev/null || echo 4)
     log_info "Compiling with $nproc parallel jobs (this may take 20-40 minutes)..."
@@ -306,12 +321,20 @@ build_tsp_brick() {
     build_device "TSP/Brick" "trimui_tsp_brick_defconfig" "rootfs-tsp-brick"
 }
 
-# Clean build
+# Clean build output only (keeps Buildroot download)
 clean_build() {
-    log_step "Cleaning build artifacts..."
+    log_step "Cleaning build output..."
     rm -rf "$BUILDROOT_DIR/buildroot-$BUILDROOT_VERSION/output"
     rm -rf "$OUTPUT_DIR"
-    log_info "Clean complete"
+    log_info "Clean complete (Buildroot source retained)"
+}
+
+# Full clean - removes everything including Buildroot download
+distclean_build() {
+    log_step "Full clean - removing all build artifacts and downloads..."
+    rm -rf "$BUILDROOT_DIR"
+    rm -rf "$OUTPUT_DIR"
+    log_info "Full clean complete"
 }
 
 # Print usage
@@ -322,11 +345,12 @@ Usage: $0 [DEVICE]
 Build rootfs for TrimUI devices.
 
 Options:
-  tg5050    Build only for TrimUI Smart Pro S (TG5050)
-  tsp       Build only for TrimUI Smart Pro and Brick
-  all       Build for all devices (default)
-  --clean   Clean build artifacts
-  --help    Show this help message
+  tg5050      Build only for TrimUI Smart Pro S (TG5050)
+  tsp         Build only for TrimUI Smart Pro and Brick
+  all         Build for all devices (default)
+  --clean     Clean build output (keeps Buildroot download)
+  --distclean Full clean including Buildroot download
+  --help      Show this help message
 
 Output:
   output/rootfs-tg5050.ext2     (1GB, full tier)
@@ -353,6 +377,10 @@ main() {
     case "$device" in
         --clean)
             clean_build
+            exit 0
+            ;;
+        --distclean)
+            distclean_build
             exit 0
             ;;
         --help|-h)

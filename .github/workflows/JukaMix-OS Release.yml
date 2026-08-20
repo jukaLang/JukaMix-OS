@@ -37,10 +37,20 @@ jobs:
       - name: Cache Buildroot downloads
         uses: actions/cache@v4
         with:
-          path: buildroot/dl
+          path: buildroot/buildroot-2024.02/dl
           key: buildroot-${{ runner.os }}-${{ hashFiles('build-rootfs.sh') }}
           restore-keys: |
             buildroot-${{ runner.os }}-
+      - name: Cache Buildroot host tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            buildroot/buildroot-2024.02/output/host
+            buildroot/buildroot-2024.02/output/build
+            buildroot/buildroot-2024.02/output/staging
+          key: buildroot-host-${{ runner.os }}-${{ hashFiles('build-rootfs.sh') }}
+          restore-keys: |
+            buildroot-host-${{ runner.os }}-
       - name: Build rootfs for all devices
         run: |
           chmod +x build-rootfs.sh
