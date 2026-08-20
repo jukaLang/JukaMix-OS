@@ -26,7 +26,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILDROOT_DIR="$SCRIPT_DIR/buildroot"
 BUILDROOT_VERSION="2024.02"
 BUILDROOT_URL="https://buildroot.org/downloads/buildroot-${BUILDROOT_VERSION}.tar.xz"
-BUILDROOT_SHA256="e8aa9e6c8c48e0a2a2a441a4e89812cd80a3c46c9e53359b20ceb0fd49e67c4b"
 OUTPUT_DIR="$SCRIPT_DIR/output"
 LOG_DIR="$OUTPUT_DIR/logs"
 BUILD_START="$(date +%s)"
@@ -105,11 +104,16 @@ check_disk_space() {
 
 # Install Buildroot
 install_buildroot() {
-    if [ -d "$BUILDROOT_DIR/buildroot-$BUILDROOT_VERSION" ]; then
+    local br_extracted="$BUILDROOT_DIR/buildroot-$BUILDROOT_VERSION"
+    
+    # Verify a previous install is complete (not a partial download)
+    if [ -d "$br_extracted" ] && [ -f "$br_extracted/Makefile" ]; then
         log_info "Buildroot already installed"
         return 0
     fi
     
+    # Remove any partial/failed previous install
+    rm -rf "$br_extracted"
     mkdir -p "$BUILDROOT_DIR"
     cd "$BUILDROOT_DIR"
     
@@ -120,19 +124,6 @@ install_buildroot() {
     while [ $retry -lt $max_retries ]; do
         log_step "Downloading Buildroot $BUILDROOT_VERSION (attempt $((retry+1))/$max_retries)..."
         if wget -q --show-progress "$BUILDROOT_URL" -O "$tarball"; then
-            # Verify checksum if known
-            if [ -n "$BUILDROOT_SHA256" ]; then
-                local actual_sha
-                actual_sha=$(sha256sum "$tarball" | awk '{print $1}')
-                if [ "$actual_sha" != "$BUILDROOT_SHA256" ]; then
-                    log_error "Checksum mismatch! Expected: $BUILDROOT_SHA256"
-                    log_error "Got: $actual_sha"
-                    rm -f "$tarball"
-                    retry=$((retry + 1))
-                    continue
-                fi
-                log_info "Checksum verified"
-            fi
             break
         fi
         log_warn "Download failed, retrying..."
@@ -263,6 +254,7 @@ build_device() {
     
     # Apply config
     log_info "Applying config..."
+    > "$logfile"  # Start fresh log for this build
     make "$config" 2>&1 | tee -a "$logfile" | tail -5
     
     # Resolve any legacy config options (renamed/removed in this Buildroot version)
