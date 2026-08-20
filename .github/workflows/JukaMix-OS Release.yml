@@ -25,7 +25,7 @@ jobs:
   buildroot:
     name: Build Buildroot rootfs
     runs-on: ubuntu-latest
-    timeout-minutes: 120  # Builds take 30-60 min, allow headroom
+    timeout-minutes: 180  # Toolchain + packages build can take 60-120 min
     steps:
       - uses: actions/checkout@v4
         with:
