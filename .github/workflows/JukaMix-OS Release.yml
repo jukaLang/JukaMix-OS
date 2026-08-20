@@ -81,16 +81,10 @@ jobs:
           rm cores.7z
       - name: Cleaning image...
         run: |
-          find /home/runner/work/JukaMix-OS/JukaMix-OS -type f -name ".gitkeep" -delete
-          rm -rf /home/runner/work/JukaMix-OS/JukaMix-OS/_assets
-          rm /home/runner/work/JukaMix-OS/JukaMix-OS/LICENSE
-          rm /home/runner/work/JukaMix-OS/JukaMix-OS/README.md
-          rm -rf /home/runner/work/JukaMix-OS/JukaMix-OS/_assets
-          rm /home/runner/work/JukaMix-OS/JukaMix-OS/LICENSE
-          rm /home/runner/work/JukaMix-OS/JukaMix-OS/README.md
-          rm -rf /home/runner/work/JukaMix-OS/JukaMix-OS/.git
-          rm -rf /home/runner/work/JukaMix-OS/JukaMix-OS/.github
           cd /home/runner/work/JukaMix-OS/JukaMix-OS
+          find . -type f -name ".gitkeep" -delete
+          rm -rf _assets .git .github
+          rm -f LICENSE README.md
           7zr a RetroArch/default_config.7z RetroArch/retroarch.cfg RetroArch/.retroarch/config/*
       - name: Stamp OS version
         # Must run before the OTA manifest and device gate: both hash/verify
