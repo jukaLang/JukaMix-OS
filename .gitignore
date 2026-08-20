@@ -34,3 +34,17 @@ __pycache__/
 
 # RetroArch cores archive: ~335MB, downloaded from releases at build time.
 RetroArch/.retroarch/cores/cores.7z
+
+# Buildroot build artifacts (too large for git)
+buildroot/buildroot-*/
+buildroot/output/
+buildroot/dl/
+buildroot/staging/
+buildroot/target/
+buildroot/host/
+buildroot/figures/
+buildroot/*.tar.xz
+buildroot/*.tar.gz
+
+# Rootfs output from build-rootfs.sh (too large for git)
+output/

@@ -1,0 +1,34 @@
+{
+  "name": "JukaMix Buildroot",
+  "description": "Modern Linux environment with new libraries",
+  "version": "1.0.0",
+  "author": "JukaMix OS",
+  "category": "System",
+  "icon": "icon.png",
+  "launch": "launch.sh",
+  "requires": {
+    "min_version": "1.0.0",
+    "devices": ["tsp", "tg5050", "brick"]
+  },
+  "features": [
+    "Modern glibc 2.44",
+    "Python 3.12",
+    "Node.js 20",
+    "QT6 (TG5050 only)",
+    "Wayland (TG5050 only)"
+  ],
+  "tiers": {
+    "tg5050": {
+      "name": "Full Tier",
+      "features": ["QT6", "Wayland", "Mesa3D", "Modern libraries"]
+    },
+    "tsp": {
+      "name": "Minimal Tier",
+      "features": ["Modern glibc", "Python 3.12", "Node.js 20"]
+    },
+    "brick": {
+      "name": "Minimal Tier",
+      "features": ["Modern glibc", "Python 3.12", "Node.js 20"]
+    }
+  }
+}
