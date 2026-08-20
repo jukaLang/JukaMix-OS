@@ -20,13 +20,15 @@
 #   - ~10GB free disk space
 #   - Internet connection
 
-set -e
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILDROOT_DIR="$SCRIPT_DIR/buildroot"
 BUILDROOT_VERSION="2024.02"
 BUILDROOT_URL="https://buildroot.org/downloads/buildroot-${BUILDROOT_VERSION}.tar.xz"
+BUILDROOT_SHA256="e8aa9e6c8c48e0a2a2a441a4e89812cd80a3c46c9e53359b20ceb0fd49e67c4b"
 OUTPUT_DIR="$SCRIPT_DIR/output"
+LOG_DIR="$OUTPUT_DIR/logs"
 BUILD_START="$(date +%s)"
 
 # Colors
@@ -47,7 +49,13 @@ cleanup_on_error() {
     local exit_code=$?
     if [ $exit_code -ne 0 ]; then
         log_error "Build failed with exit code $exit_code"
-        log_error "Check build logs in $BUILDROOT_DIR/buildroot-$BUILDROOT_VERSION/output/build/"
+        if [ -d "$LOG_DIR" ]; then
+            log_error "Build logs saved in $LOG_DIR/"
+            for f in "$LOG_DIR"/*.log; do
+                [ -f "$f" ] && log_error "  $f"
+            done
+        fi
+        log_error "Buildroot build logs: $BUILDROOT_DIR/buildroot-$BUILDROOT_VERSION/output/build/"
     fi
 }
 trap cleanup_on_error EXIT
@@ -81,6 +89,20 @@ check_deps() {
     log_info "All dependencies found"
 }
 
+# Check available disk space (need ~10GB)
+check_disk_space() {
+    local required_mb=10240
+    local available_mb
+    available_mb=$(df -m "$SCRIPT_DIR" | awk 'NR==2 {print $4}')
+    
+    if [ "$available_mb" -lt "$required_mb" ]; then
+        log_error "Insufficient disk space: ${available_mb}MB available, ${required_mb}MB required"
+        exit 1
+    fi
+    
+    log_info "Disk space OK: ${available_mb}MB available"
+}
+
 # Install Buildroot
 install_buildroot() {
     if [ -d "$BUILDROOT_DIR/buildroot-$BUILDROOT_VERSION" ]; then
@@ -88,15 +110,45 @@ install_buildroot() {
         return 0
     fi
     
-    log_step "Downloading Buildroot $BUILDROOT_VERSION..."
     mkdir -p "$BUILDROOT_DIR"
     cd "$BUILDROOT_DIR"
     
-    wget -q --show-progress "$BUILDROOT_URL" -O "buildroot-${BUILDROOT_VERSION}.tar.xz"
+    local tarball="buildroot-${BUILDROOT_VERSION}.tar.xz"
+    local max_retries=3
+    local retry=0
+    
+    while [ $retry -lt $max_retries ]; do
+        log_step "Downloading Buildroot $BUILDROOT_VERSION (attempt $((retry+1))/$max_retries)..."
+        if wget -q --show-progress "$BUILDROOT_URL" -O "$tarball"; then
+            # Verify checksum if known
+            if [ -n "$BUILDROOT_SHA256" ]; then
+                local actual_sha
+                actual_sha=$(sha256sum "$tarball" | awk '{print $1}')
+                if [ "$actual_sha" != "$BUILDROOT_SHA256" ]; then
+                    log_error "Checksum mismatch! Expected: $BUILDROOT_SHA256"
+                    log_error "Got: $actual_sha"
+                    rm -f "$tarball"
+                    retry=$((retry + 1))
+                    continue
+                fi
+                log_info "Checksum verified"
+            fi
+            break
+        fi
+        log_warn "Download failed, retrying..."
+        rm -f "$tarball"
+        retry=$((retry + 1))
+        sleep $((retry * 5))
+    done
+    
+    if [ ! -f "$tarball" ]; then
+        log_error "Failed to download Buildroot after $max_retries attempts"
+        exit 1
+    fi
     
     log_step "Extracting Buildroot..."
-    tar xf "buildroot-${BUILDROOT_VERSION}.tar.xz"
-    rm "buildroot-${BUILDROOT_VERSION}.tar.xz"
+    tar xf "$tarball"
+    rm "$tarball"
     
     log_info "Buildroot installed"
 }
@@ -194,28 +246,40 @@ build_device() {
     local output_name="$3"
     local br_dir="$BUILDROOT_DIR/buildroot-$BUILDROOT_VERSION"
     local start_time=$(date +%s)
+    local logfile="$LOG_DIR/${output_name}.log"
+    
+    mkdir -p "$LOG_DIR"
     
     log_step "Building $device..."
     log_info "Config: $config"
     log_info "Output: $OUTPUT_DIR/${output_name}.ext2"
+    log_info "Log: $logfile"
     
     cd "$br_dir"
     
-    # Clean previous build
-    make clean 2>/dev/null || true
+    # Full clean between device builds (distclean removes host tools, staging, etc.)
+    log_info "Cleaning previous build artifacts..."
+    make distclean 2>/dev/null || true
     
     # Apply config
     log_info "Applying config..."
-    make "$config" 2>&1 | tail -5
+    make "$config" 2>&1 | tee -a "$logfile" | tail -5
+    
+    # Resolve any legacy config options (renamed/removed in this Buildroot version)
+    log_info "Resolving legacy configuration options..."
+    make olddefconfig 2>&1 | tee -a "$logfile" | tail -5
     
     # Build with parallel jobs
     local nproc=$(nproc 2>/dev/null || echo 4)
     log_info "Compiling with $nproc parallel jobs (this may take 20-40 minutes)..."
-    make -j"$nproc" 2>&1 | tail -10
+    make -j"$nproc" 2>&1 | tee -a "$logfile" | tail -20
     
     # Verify output exists
     if [ ! -f "output/images/rootfs.ext2" ]; then
         log_error "Build failed: output/images/rootfs.ext2 not found"
+        log_error "Full build log: $logfile"
+        log_error "Last 30 lines of log:"
+        tail -30 "$logfile" 2>/dev/null
         return 1
     fi
     
@@ -313,6 +377,7 @@ main() {
     # Check environment
     check_linux
     check_deps
+    check_disk_space
     
     # Setup
     install_buildroot
