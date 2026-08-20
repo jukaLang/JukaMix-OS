@@ -69,3 +69,19 @@ head -c 5 "$CORES_ARCHIVE.tmp" | grep -q "<!DOC" && {
 
 mv -f "$CORES_ARCHIVE.tmp" "$CORES_ARCHIVE"
 echo "fetch_cores: downloaded cores.7z ($(wc -c < "$CORES_ARCHIVE") bytes)"
+
+# Verify checksum if available
+CHECKSUM_URL="${JUKAMIX_CORES_CHECKSUM_URL:-}"
+if [ -n "$CHECKSUM_URL" ]; then
+    echo "fetch_cores: verifying checksum..."
+    EXPECTED=$(curl -fsSL "$CHECKSUM_URL" 2>/dev/null | awk '{print $1}')
+    if [ -n "$EXPECTED" ]; then
+        ACTUAL=$(sha256sum "$CORES_ARCHIVE" 2>/dev/null | awk '{print $1}')
+        if [ "$EXPECTED" != "$ACTUAL" ]; then
+            echo "fetch_cores: checksum mismatch (expected $EXPECTED, got $ACTUAL)" >&2
+            rm -f "$CORES_ARCHIVE"
+            exit 1
+        fi
+        echo "fetch_cores: checksum verified"
+    fi
+fi

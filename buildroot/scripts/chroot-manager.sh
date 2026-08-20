@@ -50,20 +50,18 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILDROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 OUTPUT_DIR="$BUILDROOT_DIR/output"
 
-# Configuration
-CHROOT_BASE="/mnt/SDCARD/buildroot"
-SWAP_FILE="/tmp/jukamix-swap"
-LOG_FILE="/tmp/jukamix-chroot.log"
-CACHE_DIR="/tmp/jukamix-cache"
-RELEASE_BASE="https://github.com/jukaLang/JukaMix-OS/releases/download"
-# Rootfs files are built by CI and uploaded as release assets.
-# They are included in the JukaMix_<stamp>.zip and also as standalone assets.
-BACKUP_DIR="/mnt/SDCARD/System/backups/chroot"
-PROFILE_DIR="/mnt/SDCARD/config/chroot-profiles"
+# Configuration (all configurable via environment variables)
+CHROOT_BASE="${JUKAMIX_CHROOT_BASE:-/mnt/SDCARD/buildroot}"
+SWAP_FILE="${JUKAMIX_SWAP_FILE:-/tmp/jukamix-swap}"
+LOG_FILE="${JUKAMIX_LOG_FILE:-/tmp/jukamix-chroot.log}"
+CACHE_DIR="${JUKAMIX_CACHE_DIR:-/tmp/jukamix-cache}"
+RELEASE_BASE="${JUKAMIX_RELEASE_BASE:-https://github.com/jukaLang/JukaMix-OS/releases/download}"
+BACKUP_DIR="${JUKAMIX_BACKUP_DIR:-/mnt/SDCARD/System/backups/chroot}"
+PROFILE_DIR="${JUKAMIX_PROFILE_DIR:-/mnt/SDCARD/config/chroot-profiles}"
 WATCHDOG_PID="/tmp/jukamix-chroot-watchdog.pid"
 REAPER_PID="/tmp/jukamix-chroot-reaper.pid"
-MONITOR_INTERVAL=5
-WATCHDOG_INTERVAL=30
+MONITOR_INTERVAL="${JUKAMIX_MONITOR_INTERVAL:-5}"
+WATCHDOG_INTERVAL="${JUKAMIX_WATCHDOG_INTERVAL:-30}"
 OVERLAY_UPPER="/tmp/jukamix-overlay/upper"
 OVERLAY_WORK="/tmp/jukamix-overlay/work"
 RUNNING_MARKER=".running"

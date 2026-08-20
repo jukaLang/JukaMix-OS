@@ -27,18 +27,30 @@ BUILDROOT_DIR="$SCRIPT_DIR/buildroot"
 BUILDROOT_VERSION="2024.02"
 BUILDROOT_URL="https://buildroot.org/downloads/buildroot-${BUILDROOT_VERSION}.tar.xz"
 OUTPUT_DIR="$SCRIPT_DIR/output"
+BUILD_START="$(date +%s)"
 
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 log_info() { echo -e "${GREEN}[INFO]${NC} $*"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 log_step() { echo -e "${BLUE}[STEP]${NC} $*"; }
+
+# Cleanup on failure
+cleanup_on_error() {
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        log_error "Build failed with exit code $exit_code"
+        log_error "Check build logs in $BUILDROOT_DIR/buildroot-$BUILDROOT_VERSION/output/build/"
+    fi
+}
+trap cleanup_on_error EXIT
 
 # Check if running on Linux
 check_linux() {
@@ -206,8 +218,11 @@ build_device() {
     local config="$2"
     local output_name="$3"
     local br_dir="$BUILDROOT_DIR/buildroot-$BUILDROOT_VERSION"
+    local start_time=$(date +%s)
     
     log_step "Building $device..."
+    log_info "Config: $config"
+    log_info "Output: $OUTPUT_DIR/${output_name}.ext2"
     
     cd "$br_dir"
     
@@ -215,17 +230,35 @@ build_device() {
     make clean 2>/dev/null || true
     
     # Apply config
-    make "$config"
+    log_info "Applying config..."
+    make "$config" 2>&1 | tail -5
     
-    # Build
-    log_info "Compiling (this may take 20-40 minutes)..."
-    make -j$(nproc)
+    # Build with parallel jobs
+    local nproc=$(nproc 2>/dev/null || echo 4)
+    log_info "Compiling with $nproc parallel jobs (this may take 20-40 minutes)..."
+    make -j"$nproc" 2>&1 | tail -10
+    
+    # Verify output exists
+    if [ ! -f "output/images/rootfs.ext2" ]; then
+        log_error "Build failed: output/images/rootfs.ext2 not found"
+        return 1
+    fi
     
     # Copy output
     mkdir -p "$OUTPUT_DIR"
     cp output/images/rootfs.ext2 "$OUTPUT_DIR/${output_name}.ext2"
     
-    log_info "Built: $OUTPUT_DIR/${output_name}.ext2 ($(ls -lh "$OUTPUT_DIR/${output_name}.ext2" | awk '{print $5}'))"
+    # Generate checksum
+    sha256sum "$OUTPUT_DIR/${output_name}.ext2" > "$OUTPUT_DIR/${output_name}.ext2.sha256"
+    
+    # Calculate timing
+    local end_time=$(date +%s)
+    local duration=$(( end_time - start_time ))
+    local minutes=$(( duration / 60 ))
+    local seconds=$(( duration % 60 ))
+    
+    local size=$(ls -lh "$OUTPUT_DIR/${output_name}.ext2" | awk '{print $5}')
+    log_info "Built: $OUTPUT_DIR/${output_name}.ext2 ($size) in ${minutes}m ${seconds}s"
 }
 
 # Build TG5050
@@ -334,11 +367,23 @@ main() {
     echo -e "${GREEN}         Build Complete!${NC}"
     echo -e "${GREEN}========================================${NC}"
     echo ""
+    # Calculate total build time
+    local build_end="$(date +%s)"
+    local total_duration=$(( build_end - BUILD_START ))
+    local total_minutes=$(( total_duration / 60 ))
+    local total_seconds=$(( total_duration % 60 ))
+    
     echo "Output files:"
     ls -lh "$OUTPUT_DIR"/*.ext2 2>/dev/null || echo "No output files"
     echo ""
+    echo "Checksums:"
+    cat "$OUTPUT_DIR"/*.sha256 2>/dev/null || echo "No checksums"
+    echo ""
+    echo -e "${CYAN}Total build time: ${total_minutes}m ${total_seconds}s${NC}"
+    echo ""
     echo "Next steps:"
     echo "  1. Upload to GitHub release"
+    echo "     gh release upload <tag> output/rootfs-*.ext2"
     echo "  2. Download on device with: ./buildroot/scripts/fetch-rootfs.sh"
     echo "  3. Start chroot with: ./buildroot/scripts/chroot-manager.sh start"
 }

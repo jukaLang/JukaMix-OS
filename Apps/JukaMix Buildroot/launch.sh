@@ -2,6 +2,7 @@
 # JukaMix Buildroot Control Center
 #
 # Features:
+# - First-time setup wizard (auto-download rootfs)
 # - Download/Install rootfs
 # - Start/Stop chroot
 # - Open terminal
@@ -60,8 +61,121 @@ check_manager() {
     if [ ! -f "$CHROOT_MANAGER" ]; then
         echo -e "${RED}Error: chroot-manager.sh not found at $CHROOT_MANAGER${NC}"
         echo "Please install JukaMix Buildroot first."
-        exit 1
+        return 1
     fi
+    return 0
+}
+
+# Check if rootfs exists
+check_rootfs() {
+    _device=$(detect_device)
+    case "$_device" in
+        tg5050) _rootfs="/mnt/SDCARD/buildroot/rootfs-tg5050.ext2" ;;
+        tsp|brick) _rootfs="/mnt/SDCARD/buildroot/rootfs-tsp-brick.ext2" ;;
+        *) return 1 ;;
+    esac
+    
+    if [ -f "$_rootfs" ]; then
+        return 0
+    fi
+    return 1
+}
+
+# First-time setup wizard
+first_time_setup() {
+    clear
+    echo -e "${CYAN}========================================${NC}"
+    echo -e "${CYAN}   JukaMix Buildroot - First Time Setup${NC}"
+    echo -e "${CYAN}========================================${NC}"
+    echo ""
+    echo -e "Welcome! This wizard will set up the chroot environment"
+    echo -e "for your $(get_device_name $(detect_device))."
+    echo ""
+    echo -e "${YELLOW}The chroot provides:${NC}"
+    echo "  - Modern glibc 2.44+"
+    echo "  - Python 3.12"
+    echo "  - Node.js 20"
+    echo "  - GPU passthrough (Mali)"
+    echo "  - Audio support"
+    echo ""
+    echo -e "${CYAN}========================================${NC}"
+    echo ""
+    echo -n "Press Enter to continue or Ctrl+C to cancel..."
+    read -r
+    
+    # Step 1: Download rootfs
+    clear
+    echo -e "${CYAN}Step 1: Download Rootfs${NC}"
+    echo ""
+    echo "This will download the rootfs for your device."
+    echo "File size: ~512MB (TSP/Brick) or ~1GB (Smart Pro S)"
+    echo ""
+    echo -n "Download now? [Y/n]: "
+    read -r _answer
+    
+    if [ "$_answer" != "n" ] && [ "$_answer" != "N" ]; then
+        echo ""
+        echo -e "${CYAN}Downloading...${NC}"
+        "$CHROOT_MANAGER" download
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Download failed. Please check your internet connection.${NC}"
+            echo "Press Enter to continue..."
+            read -r
+            return 1
+        fi
+    fi
+    
+    # Step 2: Install rootfs
+    clear
+    echo -e "${CYAN}Step 2: Install Rootfs${NC}"
+    echo ""
+    echo "This will extract the rootfs to the chroot directory."
+    echo ""
+    echo -n "Install now? [Y/n]: "
+    read -r _answer
+    
+    if [ "$_answer" != "n" ] && [ "$_answer" != "N" ]; then
+        echo ""
+        echo -e "${CYAN}Installing...${NC}"
+        "$CHROOT_MANAGER" install
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Installation failed.${NC}"
+            echo "Press Enter to continue..."
+            read -r
+            return 1
+        fi
+    fi
+    
+    # Step 3: Start chroot
+    clear
+    echo -e "${CYAN}Step 3: Start Buildroot${NC}"
+    echo ""
+    echo "This will start the chroot environment."
+    echo ""
+    echo -n "Start now? [Y/n]: "
+    read -r _answer
+    
+    if [ "$_answer" != "n" ] && [ "$_answer" != "N" ]; then
+        echo ""
+        echo -e "${CYAN}Starting...${NC}"
+        "$CHROOT_MANAGER" start
+    fi
+    
+    # Done
+    clear
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}   Setup Complete!${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo ""
+    echo -e "Your chroot environment is ready."
+    echo ""
+    echo -e "${CYAN}Quick start:${NC}"
+    echo "  - Open Terminal to access the chroot"
+    echo "  - Run Python/Node.js scripts"
+    echo "  - Enable Overlay for persistent changes"
+    echo ""
+    echo "Press Enter to continue to Control Center..."
+    read -r
 }
 
 # Show main menu
@@ -154,6 +268,9 @@ show_menu() {
     echo "20. List Profiles"
     echo "21. Save Profile"
     echo "22. Load Profile"
+    echo ""
+    echo "=== Help ==="
+    echo "23. First Time Setup Wizard"
     echo ""
     echo "0.  Exit"
     echo ""
@@ -499,8 +616,20 @@ do_profile_load() {
 # MAIN LOOP
 # ============================================================================
 
-check_manager
+# Check if chroot manager exists
+if ! check_manager; then
+    echo "Press Enter to exit..."
+    read -r
+    exit 1
+fi
 
+# Check if this is first time (no rootfs installed)
+if ! check_rootfs; then
+    echo -e "${YELLOW}Rootfs not found. Running first-time setup...${NC}"
+    first_time_setup
+fi
+
+# Main loop
 while true; do
     show_menu
     echo ""
@@ -530,6 +659,7 @@ while true; do
         20) do_profiles_list ;;
         21) do_profile_save ;;
         22) do_profile_load ;;
+        23) first_time_setup ;;
         0)  echo ""; echo "Goodbye!"; exit 0 ;;
         *)  echo "Invalid option"; sleep 1 ;;
     esac
