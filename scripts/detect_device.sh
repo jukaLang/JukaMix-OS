@@ -7,10 +7,11 @@ set -eu
 if [ -n "${JUKAMIX_DEVICE_FORCE:-}" ]; then
     code=$(printf '%s' "$JUKAMIX_DEVICE_FORCE" | tr -d '[:space:]')
     case "$code" in
-        tsp|tg5040) profile="trimui-smart-pro" ;;
-        tg5050)     profile="trimui-smart-pro-s" ;;
-        brick)      profile="trimui-brick" ;;
-        *)          profile="unknown" ;;
+        tsp|tg5040)       profile="trimui-smart-pro" ;;
+        tg5050)           profile="trimui-smart-pro-s" ;;
+        brick)            profile="trimui-brick" ;;
+        brick_pro|brickpro) profile="trimui-brick-pro" ;;
+        *)                profile="unknown" ;;
     esac
     printf 'device_code=%s\n' "$code"
     printf 'device_profile=%s\n' "$profile"
@@ -43,6 +44,9 @@ fi
 
 lower=$(printf '%s' "$code $machine" | tr '[:upper:]' '[:lower:]')
 case "$lower" in
+    *brick_pro*|*brickpro*)
+        profile="trimui-brick-pro"
+        ;;
     *brick*)
         profile="trimui-brick"
         ;;

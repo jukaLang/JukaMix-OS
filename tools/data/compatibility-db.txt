@@ -11,43 +11,53 @@
 tsp|*|*|horizontal_display|*|SUPPORTED|1280x720 horizontal panel|*|2026-08-01
 tg5050|*|*|horizontal_display|*|SUPPORTED|1280x720 horizontal panel (A523 SoC)|*|2026-08-01
 brick|*|*|horizontal_display|*|INCOMPATIBLE|1024x768 vertical panel|*|2026-08-01
+brick_pro|*|*|horizontal_display|*|SUPPORTED|1280x720 horizontal panel (A133 Plus)|*|2026-08-20
 
 tsp|*|*|analog_sticks|*|SUPPORTED|Dual analog sticks|*|2026-08-01
 tg5050|*|*|analog_sticks|*|SUPPORTED|Dual analog sticks|*|2026-08-01
 brick|*|*|analog_sticks|*|UNTESTED|No analog sticks - digital controls only|*|2026-08-18
+brick_pro|*|*|analog_sticks|*|SUPPORTED|Dual analog sticks|*|2026-08-20
 
 tsp|*|*|rumble|*|SUPPORTED|*|*|2026-08-01
 tg5050|*|*|rumble|*|SUPPORTED|*|*|2026-08-01
 brick|*|*|rumble|*|UNTESTED|No rumble motor reported|*|2026-08-01
+brick_pro|*|*|rumble|*|SUPPORTED|Rumble motor present|*|2026-08-20
 
 tsp|*|*|touchscreen|*|UNTESTED|No touch panel|*|2026-08-01
 tg5050|*|*|touchscreen|*|UNTESTED|No touch panel|*|2026-08-01
 brick|*|*|touchscreen|*|SUPPORTED|Capacitive touch|*|2026-08-01
+brick_pro|*|*|touchscreen|*|UNTESTED|No touch panel|*|2026-08-20
 
 tsp|*|*|opengl|*|SUPPORTED|Mali-G31 GPU|*|2026-08-01
 tg5050|*|*|opengl|*|SUPPORTED|Mali-G57 GPU|*|2026-08-01
 brick|*|*|opengl|*|SUPPORTED|Mali-G31 GPU|*|2026-08-01
+brick_pro|*|*|opengl|*|SUPPORTED|Mali-G31 GPU|*|2026-08-20
 
 tsp|*|*|vulkan|*|UNTESTED|Driver availability unverified|*|2026-08-01
 tg5050|*|*|vulkan|*|UNTESTED|Driver availability unverified|*|2026-08-01
 brick|*|*|vulkan|*|UNTESTED|Driver availability unverified|*|2026-08-01
+brick_pro|*|*|vulkan|*|UNTESTED|Driver availability unverified|*|2026-08-20
 
 tsp|*|*|stereo_audio|*|SUPPORTED|*|*|2026-08-01
 tg5050|*|*|stereo_audio|*|SUPPORTED|*|*|2026-08-01
 brick|*|*|stereo_audio|*|SUPPORTED|*|*|2026-08-01
+brick_pro|*|*|stereo_audio|*|SUPPORTED|*|*|2026-08-20
 
 tsp|*|*|high_perf|*|SUPPORTED|Allwinner A133 Plus|*|2026-08-01
 tg5050|*|*|high_perf|*|SUPPORTED|Allwinner A523 (higher tier)|*|2026-08-01
 brick|*|*|high_perf|*|DEGRADED|Lower-power SoC|*|2026-08-01
+brick_pro|*|*|high_perf|*|SUPPORTED|Allwinner A133 Plus|*|2026-08-20
 
 tsp|*|*|aarch64|*|SUPPORTED|arm64 userland|*|2026-08-01
 tg5050|*|*|aarch64|*|SUPPORTED|arm64 userland|*|2026-08-01
 brick|*|*|aarch64|*|SUPPORTED|arm64 userland|*|2026-08-01
+brick_pro|*|*|aarch64|*|SUPPORTED|arm64 userland|*|2026-08-20
 
 # --- RetroArch cores (per device) -------------------------------------------
 tsp|*|*|core/snes9x|1.16.0|SUPPORTED|*|*|2026-08-01
 tg5050|*|*|core/snes9x|1.16.0|SUPPORTED|A523 handles SNES well at full speed|*|2026-08-17
 brick|*|*|core/snes9x|1.16.0|SUPPORTED|*|*|2026-08-01
+brick_pro|*|*|core/snes9x|1.16.0|SUPPORTED|*|*|2026-08-20
 
 # Game Boy / GBA family
 tsp|*|*|core/gb-gambatte|1.16.0|SUPPORTED|*|*|2026-08-01
@@ -58,38 +68,46 @@ tg5050|*|*|core/gba-vbam|1.0.0|SUPPORTED|VBAM performs well on A523|*|2026-08-17
 # Nintendo DS
 tsp|*|*|core/nds-drastic|2.3|SUPPORTED|*|*|2026-08-01
 tg5050|*|*|core/nds-drastic|2.3|SUPPORTED|A523 provides smooth DS emulation|*|2026-08-17
+brick_pro|*|*|core/nds-drastic|2.3|SUPPORTED|*|*|2026-08-20
 
 # Nintendo 64
 tsp|*|*|core/n64-mupen64plus|2.5|DEGRADED|Some 3D games struggle on A133|*|2026-08-01
 tg5050|*|*|core/n64-mupen64plus|2.5|SUPPORTED|A523 significantly improves N64 3D perf|*|2026-08-17
 tg5050|*|*|core/n64-parallel|6.0|SUPPORTED|Parallel64 benefits from A523 core count|*|2026-08-17
+brick_pro|*|*|core/n64-mupen64plus|2.5|DEGRADED|Same as TSP - A133 Plus limits 3D|*|2026-08-20
 
 # PlayStation 1
 tsp|*|*|core/ps1-pcsx_rearmed|1.0|SUPPORTED|Most games run well on A133|*|2026-08-01
 tg5050|*|*|core/ps1-pcsx_rearmed|1.0|SUPPORTED|Better sprite rendering on Mali-G57|*|2026-08-17
 tg5050|*|*|core/ps1-swanstation|0.1|SUPPORTED|SwanStation stable on A523/arm64|*|2026-08-17
 tg5050|*|*|core/ps1-duckstation|0.1|SUPPORTED|DuckStation benefits from arm64|*|2026-08-17
+brick_pro|*|*|core/ps1-pcsx_rearmed|1.0|SUPPORTED|*|*|2026-08-20
 
 # PSP
 tsp|*|*|core/psp-ppsspp|1.17|DEGRADED|Heavy titles drop frames on A133|*|2026-08-01
 tg5050|*|*|core/psp-ppsspp|1.17|SUPPORTED|Mali-G57 handles most PSP titles at native res|*|2026-08-17
+brick_pro|*|*|core/psp-ppsspp|1.17|DEGRADED|Same as TSP - A133 Plus limits PSP|*|2026-08-20
 
 # Sega platforms
 tg5050|*|*|core/sega-picodrive|1.6|SUPPORTED|MD/SG/CD/Mega32X all smooth on A523|*|2026-08-17
 tg5050|*|*|core/sega-genplus|1.0|SUPPORTED|GenPlus ideal for 8/16-bit Sega|*|2026-08-17
+brick_pro|*|*|core/sega-genplus|1.0|SUPPORTED|*|*|2026-08-20
 
 # Saturn
 tsp|*|*|core/saturn-yabuse|1.5|DEGRADED|Color/emulation issues, some games struggle|*|2026-08-01
-tg5050|*|*|core/saturn-yabuse|1.5|DEGRADED|Similar to TSP — yabuse has known limitations; not a perf bottleneck|*|2026-08-17
+tg5050|*|*|core/saturn-yabuse|1.5|DEGRADED|Similar to TSP - yabuse has known limitations; not a perf bottleneck|*|2026-08-17
+brick_pro|*|*|core/saturn-yabuse|1.5|DEGRADED|Same as TSP|*|2026-08-20
 
 # Dreamcast / NAOMI
 tsp|*|*|core/dc-flycast|2.0|DEGRADED|Upscale limited on A133|*|2026-08-01
 tg5050|*|*|core/dc-flycast|2.4|SUPPORTED|Mali-G57 enables 2x-3x upscale in many games|*|2026-08-17
-tg5050|*|*|core/naomi-flycast|2.4|SUPPORTED|Same as DC — better upscale headroom|*|2026-08-17
+tg5050|*|*|core/naomi-flycast|2.4|SUPPORTED|Same as DC - better upscale headroom|*|2026-08-17
+brick_pro|*|*|core/dc-flycast|2.0|DEGRADED|Same as TSP|*|2026-08-20
 
 # Arcade (FBNeo / FBAlpha)
 tg5050|*|*|core/arcade-fbneo|1.0|SUPPORTED|FBNeo runs nearly all CPS1/2/3, NEOGEO at full speed|*|2026-08-17
 tg5050|*|*|core/arcade-fba2012|0.2|SUPPORTED|FBAlpha 2012 good for older arcade hardware|*|2026-08-17
+brick_pro|*|*|core/arcade-fbneo|1.0|SUPPORTED|*|*|2026-08-20
 
 # PC Engine / TurboGrafx
 tg5050|*|*|core/pce-pce2006|1.0|SUPPORTED|PCE/TG-16 accurate on A523|*|2026-08-17
