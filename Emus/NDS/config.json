@@ -31,6 +31,14 @@
         {
             "name": "Drastic (No Overlay + Nearest)",
             "launch": "drastic.sh"
+        },
+        {
+            "name": "---------- Key Remapping ----------",
+            "launch": ""
+        },
+        {
+            "name": "Set Key Remap Profile",
+            "launch": "/mnt/SDCARD/Apps/SystemTools/Menu/TOOLS/Key Remapper.sh"
         }
     ]
 }

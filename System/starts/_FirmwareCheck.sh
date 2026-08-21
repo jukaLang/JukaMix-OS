@@ -9,7 +9,12 @@ if ! read -r current_device </etc/trimui_device.txt; then
     if [ "$RES" = "1280x720" ]; then
         current_device="tsp"
     else
-        current_device="brick"
+        # Detect Brick Pro by checking for Pro-specific hardware
+        if [ -f /sys/class/input/input*/name ] && grep -qi "brick_pro" /sys/class/input/input*/name 2>/dev/null; then
+            current_device="brick_pro"
+        else
+            current_device="brick"
+        fi
     fi
     echo -n $current_device >/etc/trimui_device.txt
 
@@ -99,7 +104,7 @@ else
 
         . /mnt/SDCARD/System/usr/trimui/scripts/common_functions.sh
 
-        pgrep -f trimui_inputd >/dev/null || { cd "/mnt/SDCARD/trimui/app" && ./trimui_inputd & } # we need input
+        pgrep -f trimui_inputd >/dev/null || { . /mnt/SDCARD/System/usr/trimui/scripts/inputd_launcher.sh && launch_inputd; } # we need input
 
         JukaMix_version=$(cat /mnt/SDCARD/System/usr/trimui/jukamix-version.txt)
         Current_FW_Version="$(cat /etc/version)"
@@ -155,9 +160,10 @@ else
         FIRMWARE_PATH="/mnt/SDCARD/trimui/firmwares/firmware_${current_device}_v${Required_FW_Version}_${Required_FW_Revision}.7z.001"
         # Firmware .awimg filename varies by device (each SoC has its own naming).
         case "$current_device" in
-            tg5050) FIRMWARE_FILE="trimui_tg5050.awimg" ;;
-            brick)  FIRMWARE_FILE="trimui_tg3040.awimg" ;;
-            *)      FIRMWARE_FILE="trimui_tg5040.awimg" ;;
+            tg5050)     FIRMWARE_FILE="trimui_tg5050.awimg" ;;
+            brick)      FIRMWARE_FILE="trimui_tg3040.awimg" ;;
+            brick_pro)  FIRMWARE_FILE="trimui_tg3040.awimg" ;;  # Same SoC as Brick
+            *)          FIRMWARE_FILE="trimui_tg5040.awimg" ;;
         esac
         message="Current   FW version: $Current_FW_Version - $Current_FW_Revision\nRequired FW version: $Required_FW_Version - $Required_FW_Revision\n \n \n"
         crc_verified=false

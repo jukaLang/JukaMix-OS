@@ -32,11 +32,6 @@ mkdir -p "$stage"
     find . -type f \
         ! -path './.git/*' \
         ! -path './dist/*' \
-        ! -path './Roms/*' \
-        ! -path './ROMs/*' \
-        ! -path './BIOS/*' \
-        ! -path './Saves/*' \
-        ! -path './States/*' \
         ! -name '*.zip' \
         ! -name '*.log' \
         ! -name 'jukauser.json' \

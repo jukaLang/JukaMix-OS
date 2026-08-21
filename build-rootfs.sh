@@ -351,7 +351,7 @@ Build rootfs for TrimUI devices.
 
 Options:
   tg5050      Build only for TrimUI Smart Pro S (TG5050)
-  tsp         Build only for TrimUI Smart Pro and Brick
+  tsp         Build only for TrimUI Smart Pro, Brick, and Brick Pro
   all         Build for all devices (default)
   --clean     Clean build output (keeps Buildroot download)
   --distclean Full clean including Buildroot download
@@ -359,7 +359,7 @@ Options:
 
 Output:
   output/rootfs-tg5050.ext2     (1GB, full tier)
-  output/rootfs-tsp-brick.ext2  (512MB, minimal tier)
+  output/rootfs-tsp-brick.ext2  (512MB, minimal tier - TSP/Brick/Brick Pro)
 
 Examples:
   $0              # Build all devices

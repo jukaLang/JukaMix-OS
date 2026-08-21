@@ -10,5 +10,16 @@
   "imgpath": "../../Imgs/LYNX",
   "useswap": 1,
   "shortname": 0,
-  "hidebios": 1
+  "hidebios": 1,
+  "extlist": "lnx|zip|7z",
+  "launchlist": [
+    {
+      "name": "Handy",
+      "launch": "launch.sh"
+    },
+    {
+      "name": "Mednafen Lynx",
+      "launch": "mednafen_lynx.sh"
+    }
+  ]
 }

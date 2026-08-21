@@ -1,0 +1,23 @@
+{
+  "label": "NES",
+  "icon": "/mnt/SDCARD/Icons/Default/Emus/NES.png",
+  "background": "/mnt/SDCARD/Backgrounds/Default/NES.png",
+  "themecolor": "FF0000",
+  "launch": "default.sh",
+  "rompath": "../../Roms/NES",
+  "imgpath": "../../Imgs/NES",
+  "useswap": 0,
+  "shortname": 0,
+  "hidebios": 1,
+  "extlist": "nes|fds|unf|zip|7z",
+  "launchlist": [
+    {
+      "name": "Mesen",
+      "launch": "mesen.sh"
+    },
+    {
+      "name": "FCEUmm",
+      "launch": "fceumm.sh"
+    }
+  ]
+}

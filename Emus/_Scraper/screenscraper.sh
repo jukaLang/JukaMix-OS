@@ -1,7 +1,14 @@
 #!/bin/sh
+# ScreenScraper launcher with device awareness
 echo $0 $*
 export LD_LIBRARY_PATH="/mnt/SDCARD/System/lib:/usr/trimui/lib:$LD_LIBRARY_PATH"
-export PATH="/mnt/SDCARD/System/bin:$PATH"
+export PATH="/mnt/SDCARD/System/bin:/mnt/SDCARD/System/usr/trimui/scripts/:$PATH"
+
+# Device detection
+DEVICE_CODE="unknown"
+if [ -r /etc/trimui_device.txt ]; then
+    DEVICE_CODE=$(tr -d '[:space:]' < /etc/trimui_device.txt 2>/dev/null | head -n 1)
+fi
 
 CurrentSelection=$(basename "$1" | sed 's/\.[^.]*$//')
 
@@ -11,7 +18,7 @@ if [ "$file_extension" = "sh" ]; then
 	exit 0
 fi
 
-echo "Scraping target: $1"
+echo "Scraping target: $1 (device: $DEVICE_CODE)"
 log_file="/mnt/SDCARD/Apps/Scraper/scraper.log"
 
 # ==== If enabled, launch the scraping task in the background ====
@@ -75,5 +82,7 @@ done
 
 # Remove the first line from the recentlist.json file
 recentlist="/mnt/SDCARD/Roms/recentlist.json"
-sed -i '1d' "$recentlist"
+if [ -f "$recentlist" ]; then
+	sed -i '1d' "$recentlist"
+fi
 sync

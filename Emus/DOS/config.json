@@ -10,5 +10,16 @@
   "imgpath": "../../Imgs/DOS",
   "useswap": 1,
   "shortname": 0,
-  "hidebios": 1
+  "hidebios": 1,
+  "extlist": "exe|bat|com|zip|7z",
+  "launchlist": [
+    {
+      "name": "DOSBox Pure",
+      "launch": "launch.sh"
+    },
+    {
+      "name": "DOSBox Core",
+      "launch": "dosbox_core.sh"
+    }
+  ]
 }

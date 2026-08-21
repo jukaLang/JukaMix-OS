@@ -18,6 +18,10 @@
       "launch": ""
     },
     {
+      "name": "Mupen64Plus-Next (Ludicrous)          ",
+      "launch": "mupen64plus_next.sh"
+    },
+    {
       "name": "ParaLLEl N64                                 ",
       "launch": "paralleln64.sh"
     },

@@ -1,13 +1,1 @@
-#!/bin/sh
-if [ ! "${1##*.}" = neo ]; then
-  /mnt/SDCARD/System/usr/trimui/scripts/infoscreen.sh -m "Geolith is only able to start roms with .neo extension." -fs 22 -k "A B START SELECT"
-  exit 1
-fi
-
-. /mnt/SDCARD/System/usr/trimui/scripts/common_launcher.sh
-cpufreq.sh ondemand 2 "${JUKAMIX_CPUFREQ_MAX:-6}"
-
-
-cd "$RA_DIR/"
-
-HOME="$RA_DIR"/ "$RA_DIR"/ra64.trimui -v -L "$RA_DIR"/.retroarch/cores/geolith_libretro.so "$@"
+#!/bin/sh\n# NEOGEO: geolith\n. /mnt/SDCARD/System/usr/trimui/scripts/common_launcher.sh\n\nif [ "$JUKAMIX_DEVICE_OPTIMIZED" = "tg5050" ]; then\n    cpufreq.sh ondemand 2 7\nelse\n    cpufreq.sh ondemand 2 6\nfi\n\ncd "$RA_DIR/"\n\nHOME="$RA_DIR"/ "$RA_BIN" -v -L "$RA_DIR"/.retroarch/cores/geolith_libretro.so "$@"\n

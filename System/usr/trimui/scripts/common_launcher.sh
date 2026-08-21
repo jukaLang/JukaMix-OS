@@ -41,6 +41,15 @@ done
 export JUKAMIX_DEVICE_OPTIMIZED="$DEVICE_CODE"
 unset DEVICE_CODE _jm_cpufreq _jm_baseline_tuned
 
+# =============================================================================
+# RetroArch Version Selection
+# =============================================================================
+# Select RetroArch binary based on device and configuration.
+# TSP/Brick/Brick Pro default to 1.22.2 if available.
+if [ -f "/mnt/SDCARD/System/usr/trimui/scripts/retroarch_version.sh" ]; then
+    . "/mnt/SDCARD/System/usr/trimui/scripts/retroarch_version.sh"
+fi
+
 # ANSI colors
 RED="\033[1;31m"
 GREEN="\033[1;32m"
@@ -61,6 +70,15 @@ print_var() {
 
 print_blue "$0 $*"
 PM_DIR="/mnt/SDCARD/Apps/PortMaster/PortMaster"
+
+# =============================================================================
+# Key Remapping
+# =============================================================================
+# Apply active key remap profile (set via Key Remapper app)
+# Works with RetroArch and standalone emulators (DraStic, PPSSPP, etc.)
+if [ -f "/mnt/SDCARD/System/usr/trimui/scripts/apply_remap.sh" ]; then
+    . /mnt/SDCARD/System/usr/trimui/scripts/apply_remap.sh
+fi
 
 # Input variables
 ROM_REAL_PATH=$(realpath "$1")

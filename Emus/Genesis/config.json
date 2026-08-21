@@ -1,0 +1,23 @@
+{
+  "label": "Genesis",
+  "icon": "/mnt/SDCARD/Icons/Default/Emus/Genesis.png",
+  "background": "/mnt/SDCARD/Backgrounds/Default/Genesis.png",
+  "themecolor": "0000FF",
+  "launch": "default.sh",
+  "rompath": "../../Roms/Genesis",
+  "imgpath": "../../Imgs/Genesis",
+  "useswap": 0,
+  "shortname": 0,
+  "hidebios": 1,
+  "extlist": "bin|gen|smd|md|zip|7z",
+  "launchlist": [
+    {
+      "name": "Genesis Plus GX",
+      "launch": "genplus.sh"
+    },
+    {
+      "name": "PicoDrive",
+      "launch": "picodrive.sh"
+    }
+  ]
+}

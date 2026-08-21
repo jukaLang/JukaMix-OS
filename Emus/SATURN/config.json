@@ -14,12 +14,12 @@
   "extlist": "iso|cue|mds|m3u|ccd|chd|zip",
   "launchlist": [
     {
-      "name": "--------------    libretro    --------------",
-      "launch": ""
-    },
-    {
       "name": "Yabasanshiro",
       "launch": "yabasanshiro.sh"
+    },
+    {
+      "name": "Kronos",
+      "launch": "kronos.sh"
     },
     {
       "name": "-------------  standalone  -------------",
@@ -33,5 +33,5 @@
       "name": "Yabasanshiro (HLE BIOS)",
       "launch": "yabasanshiro_standalone.sh"
     }
-  ] 
+  ]
 }

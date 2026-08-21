@@ -10,5 +10,12 @@
   "imgpath": "../../Imgs/PCFX",
   "useswap": 1,
   "shortname": 0,
-  "hidebios": 1
+  "hidebios": 1,
+  "extlist": "cue|chd",
+  "launchlist": [
+    {
+      "name": "Mednafen PC FX",
+      "launch": "launch.sh"
+    }
+  ]
 }

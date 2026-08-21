@@ -1,9 +1,1 @@
-#!/bin/sh
-if [ "${1##*.}" = neo ]; then $(dirname "$0")/geolith.sh "$1"; exit 0; fi
-
-. /mnt/SDCARD/System/usr/trimui/scripts/common_launcher.sh
-cpufreq.sh 2 6
-
-cd "$RA_DIR/"
-
-HOME="$RA_DIR"/ "$RA_DIR"/ra64.trimui -v -L "$RA_DIR"/.retroarch/cores/fbneo_libretro.so "$@"
+#!/bin/sh\n# NEOGEO: fbneo\n. /mnt/SDCARD/System/usr/trimui/scripts/common_launcher.sh\n\nif [ "$JUKAMIX_DEVICE_OPTIMIZED" = "tg5050" ]; then\n    cpufreq.sh ondemand 2 7\nelse\n    cpufreq.sh ondemand 2 6\nfi\n\ncd "$RA_DIR/"\n\nHOME="$RA_DIR"/ "$RA_BIN" -v -L "$RA_DIR"/.retroarch/cores/fbneo_libretro.so "$@"\n

@@ -1,13 +1,19 @@
 #!/bin/sh
+# NDS: DraStic launcher with key remapping
+# Key remapping is handled by common_launcher.sh
 . /mnt/SDCARD/System/usr/trimui/scripts/common_launcher.sh
-cpufreq.sh ondemand 4 7
+
+# DraStic needs higher CPU for NDS emulation
+if [ "$JUKAMIX_DEVICE_OPTIMIZED" = "tg5050" ]; then
+    cpufreq.sh ondemand 4 9
+else
+    cpufreq.sh ondemand 4 7
+fi
 
 cd drastic
 export HOME="$PWD"
 
-
 LAUNCHER=$(grep -i "dowork 0x" "/tmp/log/messages" | tail -n 1)
-
 
 # Advanced mode
 if echo "$LAUNCHER" | grep -iq "Advanced"; then
@@ -30,4 +36,3 @@ else
     echo "Using bilinear scaling"
     exec ./drastic_2.5.2.2 "$@"
 fi
-

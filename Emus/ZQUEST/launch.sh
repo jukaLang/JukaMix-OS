@@ -1,15 +1,1 @@
-#!/bin/sh
-. /mnt/SDCARD/System/usr/trimui/scripts/common_launcher.sh
-cpufreq.sh ondemand 3 7
-
-
-RomFullPath=$1
-extension="${RomFullPath##*.}"
-if [ "$extension" = "launch" ]; then
-    "$@"
-	exit
-fi
-
-
-cd "$RA_DIR/"
-HOME="$RA_DIR"/ "$RA_DIR"/ra64.trimui -v -L "$RA_DIR"/.retroarch/cores/zc210_libretro.so "$@"
+#!/bin/sh\n# ZQUEST: zc210\n. /mnt/SDCARD/System/usr/trimui/scripts/common_launcher.sh\n\nif [ "$JUKAMIX_DEVICE_OPTIMIZED" = "tg5050" ]; then\n    cpufreq.sh ondemand 2 6\nelse\n    cpufreq.sh ondemand 2 5\nfi\n\ncd "$RA_DIR/"\n\nHOME="$RA_DIR"/ "$RA_BIN" -v -L "$RA_DIR"/.retroarch/cores/zc210_libretro.so "$@"\n

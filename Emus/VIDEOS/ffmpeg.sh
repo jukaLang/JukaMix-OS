@@ -1,6 +1,1 @@
-#!/bin/sh
-RA_DIR=/mnt/SDCARD/RetroArch
-EMU_DIR=/mnt/SDCARD/Emus/VIDEOS
-cd "$RA_DIR/"
-
-HOME="$RA_DIR"/ "$RA_DIR"/ra64.trimui -L "$RA_DIR"/.retroarch/cores/ffmpeg_libretro.so "$@"
+#!/bin/sh\n# VIDEOS: ffmpeg\n. /mnt/SDCARD/System/usr/trimui/scripts/common_launcher.sh\n\nif [ "$JUKAMIX_DEVICE_OPTIMIZED" = "tg5050" ]; then\n    cpufreq.sh ondemand 2 6\nelse\n    cpufreq.sh ondemand 2 5\nfi\n\ncd "$RA_DIR/"\n\nHOME="$RA_DIR"/ "$RA_BIN" -v -L "$RA_DIR"/.retroarch/cores/ffmpeg_libretro.so "$@"\n

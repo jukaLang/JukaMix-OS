@@ -1,9 +1,14 @@
 #!/bin/sh
+# OpenBOR: Beats of Rage Remixed - beat 'em up engine
 . /mnt/SDCARD/System/usr/trimui/scripts/common_launcher.sh
-cpufreq.sh ondemand 2 "${JUKAMIX_CPUFREQ_MAX:-6}"
+
+# OpenBOR needs moderate CPU
+if [ "$JUKAMIX_DEVICE_OPTIMIZED" = "tg5050" ]; then
+    cpufreq.sh ondemand 2 7
+else
+    cpufreq.sh ondemand 2 6
+fi
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD
 
-#swapon /mnt/SDCARD/App/swap/swap.img
 ./OpenBOR "$1"
-#swapoff /mnt/SDCARD/App/swap/swap.img

@@ -1,7 +1,13 @@
 #!/bin/sh
+# Atari 5200: a5200
 . /mnt/SDCARD/System/usr/trimui/scripts/common_launcher.sh
-cpufreq.sh ondemand 2 "${JUKAMIX_CPUFREQ_MAX:-6}"
+
+if [ "$JUKAMIX_DEVICE_OPTIMIZED" = "tg5050" ]; then
+    cpufreq.sh ondemand 2 6
+else
+    cpufreq.sh ondemand 2 5
+fi
 
 cd "$RA_DIR/"
 
-HOME="$RA_DIR"/ "$RA_DIR"/ra64.trimui -v -L "$RA_DIR"/.retroarch/cores/a5200_libretro.so "$@"
+HOME="$RA_DIR"/ "$RA_BIN" -v -L "$RA_DIR"/.retroarch/cores/a5200_libretro.so "$@"

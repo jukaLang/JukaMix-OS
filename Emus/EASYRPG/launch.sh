@@ -1,9 +1,1 @@
-#!/bin/sh
-. /mnt/SDCARD/System/usr/trimui/scripts/common_launcher.sh
-cpufreq.sh ondemand 2 7
-
-cd "$RA_DIR/"
-
-realpath=$(realpath "$@")
-HOME="$RA_DIR"/ "$RA_DIR"/ra64.trimui -v -L "$RA_DIR"/.retroarch/cores/easyrpg_libretro.so "$realpath"
-
+#!/bin/sh\n# EASYRPG: easyrpg\n. /mnt/SDCARD/System/usr/trimui/scripts/common_launcher.sh\n\nif [ "$JUKAMIX_DEVICE_OPTIMIZED" = "tg5050" ]; then\n    cpufreq.sh ondemand 2 6\nelse\n    cpufreq.sh ondemand 2 5\nfi\n\ncd "$RA_DIR/"\n\nHOME="$RA_DIR"/ "$RA_BIN" -v -L "$RA_DIR"/.retroarch/cores/easyrpg_libretro.so "$@"\n

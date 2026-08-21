@@ -15,8 +15,9 @@ JUKAMIX_CPUFREQ_MAX=6
 if [ -r /etc/trimui_device.txt ]; then
     _jm_dev=$(tr -d '[:space:]' < /etc/trimui_device.txt)
     case "$_jm_dev" in
-        tg5050) JUKAMIX_CPUFREQ_MAX=8 ;;
-        tsp)    JUKAMIX_CPUFREQ_MAX=7 ;;
+        tg5050)          JUKAMIX_CPUFREQ_MAX=8 ;;
+        tsp)             JUKAMIX_CPUFREQ_MAX=7 ;;
+        brick_pro|brickpro) JUKAMIX_CPUFREQ_MAX=7 ;;  # Same A133 as TSP
     esac
     unset _jm_dev
 fi
