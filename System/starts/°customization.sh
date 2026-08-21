@@ -10,6 +10,23 @@ mkdir -p /mnt/SDCARD/System/etc 2>/dev/null
 PATH="/mnt/SDCARD/System/bin:/mnt/SDCARD/System/usr/trimui/scripts:$PATH"
 export LD_LIBRARY_PATH="/mnt/SDCARD/System/lib:/usr/trimui/lib:$LD_LIBRARY_PATH"
 
+# Kill any lingering presenter from _FirmwareCheck.sh (prevents overlapping display)
+pkill -9 presenter 2>/dev/null
+sleep 0.5
+
+# ── Device detection (early, needed by multiple sections) ─────────────
+current_device="tsp"  # Default
+current_device="${current_device:-tsp}"
+if [ -f /etc/trimui_device.txt ]; then
+    read -r current_device < /etc/trimui_device.txt 2>/dev/null || current_device="tsp"
+fi
+# Normalize device name
+current_device=$(echo "$current_device" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
+
+case "$current_device" in
+    brick|brick_pro) current_device="brick" ;;
+esac
+
 # ── System configuration ──────────────────────────────────────────────
 system_json="/mnt/UDISK/system.json"
 Current_Theme=$(/usr/trimui/bin/systemval theme 2>/dev/null || echo "/mnt/SDCARD/Themes/JukaMix - OS/")
@@ -31,6 +48,9 @@ if [ ! -f /tmp/boot_splash_shown ]; then
     touch /tmp/boot_splash_shown 2>/dev/null
     /mnt/SDCARD/System/usr/trimui/scripts/infoscreen.sh -i "$Current_bg" -m "JukaMix OS v$version" -t 2 2>/dev/null
 fi
+
+# Disable infoscreen during boot to prevent overlapping messages from SystemTools
+touch /tmp/infoscreen_disabled 2>/dev/null
 
 ################ JukaMix OS internal storage Customization ################
 # Get firmware version with fallback
@@ -64,9 +84,9 @@ if [ "$version" != "$FW_patched_version" ]; then
     mv /bin/busybox.bak /mnt/SDCARD/System/bin 2>/dev/null
     cp "/mnt/SDCARD/trimui/res/skin/bg.png" "/usr/trimui/res/skin/"
 
-    # USB Storage app update
-    rm "/usr/trimui/apps/usb_storage/"*.png
-    cp "/mnt/SDCARD/System/resources/usb_storage/"* "/usr/trimui/apps/usb_storage/"
+    # USB Storage app update (with safeguards)
+    rm -f /usr/trimui/apps/usb_storage/*.png 2>/dev/null
+    cp -f /mnt/SDCARD/System/resources/usb_storage/* /usr/trimui/apps/usb_storage/ 2>/dev/null
 
     # Disable Stock Music app
     mv /usr/trimui/apps/musicplayer/config.json /usr/trimui/apps/musicplayer/config_disabled.json
@@ -223,16 +243,13 @@ if [ "$version" != "$FW_patched_version" ]; then
         /mnt/SDCARD/Apps/EmuCleaner/launch.sh -s 2>/dev/null
     fi
 
+    # Re-enable infoscreen after boot
+    rm -f /tmp/infoscreen_disabled 2>/dev/null
+
     ################ Flash boot logo ################
     if [ "$JukaMix_Update" = "0" ]; then
 
-        # Get device with fallback
-        Current_device="tsp"  # Default
-        if [ -f /etc/trimui_device.txt ]; then
-            read -r Current_device < /etc/trimui_device.txt 2>/dev/null || Current_device="tsp"
-        fi
-
-        case "$Current_device" in
+        case "$current_device" in
             tsp|tg5050)
                 src_dir="/mnt/SDCARD/Apps/BootLogo/Images_1280x720"
                 ;;

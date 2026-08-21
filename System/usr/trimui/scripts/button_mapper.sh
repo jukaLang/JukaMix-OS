@@ -78,8 +78,13 @@ create_game_mapping() {
         return
     fi
     
-    # Copy default mapping
-    cp "$MAPPINGS_DIR/default.map" "$mapping_file"
+    # Copy default mapping (with safeguard)
+    if [ -f "$MAPPINGS_DIR/default.map" ]; then
+        cp "$MAPPINGS_DIR/default.map" "$mapping_file"
+    else
+        create_default
+        cp "$MAPPINGS_DIR/default.map" "$mapping_file"
+    fi
     
     log "Created mapping for: $game_name"
     echo "Created mapping for: $game_name"
@@ -181,10 +186,15 @@ reset_mapping() {
         return 1
     fi
     
-    cp "$MAPPINGS_DIR/default.map" "$mapping_file"
-    
-    log "Reset mapping: $mapping_file"
-    echo "Mapping reset to default"
+    # Reset to default (with safeguard)
+    if [ -f "$MAPPINGS_DIR/default.map" ]; then
+        cp "$MAPPINGS_DIR/default.map" "$mapping_file"
+        log "Reset mapping: $mapping_file"
+        echo "Mapping reset to default"
+    else
+        echo "Default mapping not found"
+        return 1
+    fi
 }
 
 # ── Export mapping ──────────────────────────────────────────────────────

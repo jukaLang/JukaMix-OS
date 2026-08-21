@@ -125,17 +125,19 @@ main() {
     echo -e "${BLUE}========================================${NC}"
     echo ""
     
-    # Measure before
-    read before_files before_size <<< "$(measure_before)"
+    # Measure before (POSIX-compatible using pipe)
+    before_files=$(measure_before | awk '{print $1}')
+    before_size=$(measure_before | awk '{print $2}')
     log_info "Before: $before_files files ($(echo "scale=2; $before_size / 1048576" | bc)MB)"
     
     # Perform cleanup
-    local cleaned=$(do_cleanup "$dry_run" "$fast")
+    cleaned=$(do_cleanup "$dry_run" "$fast")
     
     # Measure after (only if not dry run)
     if [ "$dry_run" = "false" ]; then
-        read after_files after_size <<< "$(measure_before)"
-        local freed=$((before_size - after_size))
+        after_files=$(measure_before | awk '{print $1}')
+        after_size=$(measure_before | awk '{print $2}')
+        freed=$((before_size - after_size))
         log_info "After: $after_files files ($(echo "scale=2; $after_size / 1048576" | bc)MB)"
         log_info "Freed: $(echo "scale=2; $freed / 1048576" | bc)MB"
     fi

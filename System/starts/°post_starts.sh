@@ -3,6 +3,9 @@
 PATH="/mnt/SDCARD/System/bin:$PATH"
 export LD_LIBRARY_PATH="/mnt/SDCARD/System/lib:/mnt/SDCARD/System/lib/samba:/mnt/SDCARD/Apps/PortMaster/PortMaster:/usr/trimui/lib:$LD_LIBRARY_PATH"
 
+# Kill any lingering presenter processes (prevents overlapping display)
+pkill -9 presenter 2>/dev/null
+
 eval $(
 	/mnt/SDCARD/System/bin/jq -r '
         @sh "
@@ -117,7 +120,10 @@ wifi_workaround() {
 # --- Launching background services ---
 
 if [ -f /tmp/device_changed ]; then
+	# Set boot flag to prevent inputd_switcher from killing MainUI
+	touch /tmp/boot_in_progress 2>/dev/null
 	/mnt/SDCARD/System/usr/trimui/scripts/inputd_switcher.sh
+	rm -f /tmp/boot_in_progress 2>/dev/null
 fi
 
 if [ "$SWAP_AB_enabled" -eq 1 ]; then

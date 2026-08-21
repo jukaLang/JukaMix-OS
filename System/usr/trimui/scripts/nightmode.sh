@@ -38,10 +38,13 @@ get_config_value() {
 }
 
 set_backlight() {
-    echo lcd0 > /sys/kernel/debug/dispdbg/name
-    echo setbl > /sys/kernel/debug/dispdbg/command
-    echo "$1" > /sys/kernel/debug/dispdbg/param
-    echo 1 > /sys/kernel/debug/dispdbg/start
+    # Write to dispdbg with safeguards (may not exist on all devices)
+    if [ -w /sys/kernel/debug/dispdbg/name ]; then
+        echo lcd0 > /sys/kernel/debug/dispdbg/name 2>/dev/null
+        echo setbl > /sys/kernel/debug/dispdbg/command 2>/dev/null
+        echo "$1" > /sys/kernel/debug/dispdbg/param 2>/dev/null
+        echo 1 > /sys/kernel/debug/dispdbg/start 2>/dev/null
+    fi
 }
 
 backup_current_settings() {

@@ -201,8 +201,10 @@ sync
 
 echo -e "\n${YELLOW}Backing up PortMaster configuration files...${NONE}"
 echo "--------------------------------------------"
-# backup config file
-mv /mnt/SDCARD/Apps/PortMaster/PortMaster/config /mnt/SDCARD/Apps/PortMaster/PortMaster/config_$timestamp
+# backup config file (with safeguard)
+if [ -d "/mnt/SDCARD/Apps/PortMaster/PortMaster/config" ]; then
+    mv /mnt/SDCARD/Apps/PortMaster/PortMaster/config /mnt/SDCARD/Apps/PortMaster/PortMaster/config_$timestamp 2>/dev/null
+fi
 sync
 
 ########################################### Check runtime files integrity ###########################################

@@ -1,3 +1,7 @@
+#!/bin/sh
+# save_launcher.sh - Sourced by launcher scripts
+# Defines save_launcher() function for button state handling
+
 save_launcher() {
     Emu_cfg="$EMU_DIR/launchers.cfg"
     Launcher_name=$(grep "dowork 0x" "/tmp/log/messages" | tail -n 1 | sed -e 's/.*: \(.*\) dowork 0x.*/\1/')

@@ -1,6 +1,7 @@
 #!/bin/sh
+
 if [ -f "/tmp/infoscreen_disabled" ]; then
-    exit
+    exit 0
 fi
 
 # Function to display usage
@@ -73,10 +74,17 @@ Current_Theme=$(basename "$(/usr/trimui/bin/systemval theme)")
 if [ "$Current_Theme" = "res" ]; then
     Current_Theme="JukaMix - OS"
 fi
-JukaMix_Style=$(/mnt/SDCARD/System/bin/jq -r '.["JUKAMIX STYLE"]' "/mnt/SDCARD/System/etc/jukamix.json")
+# Get JukaMix style with fallback
+JukaMix_Style="default"
+if [ -x "/mnt/SDCARD/System/bin/jq" ] && [ -f "/mnt/SDCARD/System/etc/jukamix.json" ]; then
+    JukaMix_Style=$(/mnt/SDCARD/System/bin/jq -r '.["JUKAMIX STYLE"] // "default"' "/mnt/SDCARD/System/etc/jukamix.json" 2>/dev/null || echo "default")
+fi
 
 # Determine font path : by default we take the one from the current theme
-Current_font=$(/mnt/SDCARD/System/bin/jq -r '.["font"]' "/mnt/SDCARD/Themes/$Current_Theme/config.json")
+Current_font=""
+if [ -x "/mnt/SDCARD/System/bin/jq" ] && [ -f "/mnt/SDCARD/Themes/$Current_Theme/config.json" ]; then
+    Current_font=$(/mnt/SDCARD/System/bin/jq -r '.["font"] // empty' "/mnt/SDCARD/Themes/$Current_Theme/config.json" 2>/dev/null)
+fi
 if [ -f "/mnt/SDCARD/Themes/$Current_Theme/$Current_font" ]; then
     font_file="/mnt/SDCARD/Themes/$Current_Theme/$Current_font"
 fi
@@ -181,7 +189,35 @@ image=$(determine_image_path "$image")
 PATH="/mnt/SDCARD/System/bin:$PATH"
 export LD_LIBRARY_PATH="/mnt/SDCARD/System/lib:/usr/trimui/lib:$LD_LIBRARY_PATH"
 
-touch /var/trimui_inputd/sticks_disabled
+touch /var/trimui_inputd/sticks_disabled 2>/dev/null
+
+# infoscreen.sh has no caller-to-caller coordination: every menu action and
+# boot-time step that shows a status toast calls this script independently.
+# If two calls land within the same ~1-2s window (easy during first boot,
+# when several "apply default X" steps and input-daemon setup can fire close
+# together), their sdl2imgshow processes both draw to the screen with no
+# lock between them, producing garbled/overlapping text and flicker as each
+# call's cleanup kills the other's still-active overlay. PID_FILE below lets
+# a new call hand off from (and only ever kill) the specific previous
+# instance, instead of blanket `pkill -f sdl2imgshow` nuking any concurrent
+# instance regardless of which call owns it.
+PID_FILE="/tmp/infoscreen.pid"
+LOCK_DIR="/tmp/infoscreen.lockdir"
+
+# Best-effort, non-blocking mutex around the handoff below (mkdir is atomic).
+# If it's already held, proceed anyway rather than risk hanging on a sleep
+# whose fractional-second support isn't guaranteed on-device -- the PID
+# hand-off itself is what actually fixes the overlap; this just narrows the
+# much smaller remaining race on reading/writing $PID_FILE.
+_got_lock=0
+mkdir "$LOCK_DIR" 2>/dev/null && _got_lock=1
+
+if [ -f "$PID_FILE" ]; then
+    old_pid=$(cat "$PID_FILE" 2>/dev/null)
+    if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+        kill -TERM "$old_pid" 2>/dev/null
+    fi
+fi
 
 # Run the sdl2imgshow command
 /mnt/SDCARD/System/bin/sdl2imgshow \
@@ -191,6 +227,10 @@ touch /var/trimui_inputd/sticks_disabled
     -c "$color" \
     -t "$message" \
     >/dev/null 2>&1 &
+sdl_pid=$!
+echo "$sdl_pid" >"$PID_FILE"
+
+[ "$_got_lock" -eq 1 ] && rmdir "$LOCK_DIR" 2>/dev/null
 
 # Function to handle the timer
 handle_timer() {
@@ -216,7 +256,14 @@ else
     handle_timer
 fi
 
-pkill -f sdl2imgshow
+# Only tear down THIS call's own overlay, and only if a newer infoscreen.sh
+# call hasn't already replaced it (checked via $PID_FILE) -- a blanket
+# `pkill -f sdl2imgshow` here is exactly what used to kill a concurrent
+# call's still-valid, not-yet-expired overlay out from under it.
+current_pid=$(cat "$PID_FILE" 2>/dev/null)
+if [ "$current_pid" = "$sdl_pid" ]; then
+    kill -TERM "$sdl_pid" 2>/dev/null
+    rm -f "$PID_FILE"
+fi
 
-rm /var/trimui_inputd/sticks_disabled
-# echo ondemand >/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+rm -f /var/trimui_inputd/sticks_disabled 2>/dev/null

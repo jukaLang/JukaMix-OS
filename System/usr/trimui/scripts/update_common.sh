@@ -7,7 +7,7 @@ export LD_LIBRARY_PATH="/mnt/SDCARD/System/lib:/usr/trimui/lib:$LD_LIBRARY_PATH"
 . /mnt/SDCARD/System/usr/trimui/scripts/common_functions.sh
 
 if [ "$1" = "-v" ]; then
-    echo -n $UPDATE_VERSION
+    echo -n "$UPDATE_VERSION"
     exit
 fi
 

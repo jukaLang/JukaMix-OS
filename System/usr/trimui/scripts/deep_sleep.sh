@@ -14,8 +14,13 @@ log() {
 # ── Check if deep sleep is enabled ────────────────────────────────────
 is_enabled() {
     if [ -f "$CONFIG_FILE" ]; then
-        local enabled=$(jq -r '.["DEEP_SLEEP"] // "enabled"' "$CONFIG_FILE" 2>/dev/null)
-        [ "$enabled" = "enabled" ]
+        # Try jq first, fallback to grep
+        if command -v jq >/dev/null 2>&1; then
+            enabled=$(jq -r '.["DEEP_SLEEP"] // "enabled"' "$CONFIG_FILE" 2>/dev/null)
+        else
+            enabled=$(grep -o '"DEEP_SLEEP"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" 2>/dev/null | sed 's/.*"\([^"]*\)"$/\1/')
+        fi
+        [ "$enabled" != "disabled" ]
     else
         return 0  # Enabled by default
     fi
@@ -24,7 +29,13 @@ is_enabled() {
 # ── Get idle timeout (in seconds) ─────────────────────────────────────
 get_idle_timeout() {
     if [ -f "$CONFIG_FILE" ]; then
-        jq -r '.["IDLE_TIMEOUT"] // "120"' "$CONFIG_FILE" 2>/dev/null
+        # Try jq first, fallback to grep
+        if command -v jq >/dev/null 2>&1; then
+            jq -r '.["IDLE_TIMEOUT"] // "120"' "$CONFIG_FILE" 2>/dev/null
+        else
+            timeout=$(grep -o '"IDLE_TIMEOUT"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" 2>/dev/null | sed 's/.*"\([^"]*\)"$/\1/')
+            echo "${timeout:-120}"
+        fi
     else
         echo "120"  # Default 2 minutes
     fi
@@ -34,12 +45,14 @@ get_idle_timeout() {
 enter_light_sleep() {
     log "Entering light sleep"
     
-    # Turn off screen
-    echo 0 > /sys/class/backlight/backlight/brightness
+    # Turn off screen (with safeguard)
+    if [ -w "/sys/class/backlight/backlight/brightness" ]; then
+        echo 0 > /sys/class/backlight/backlight/brightness 2>/dev/null
+    fi
     
     # Pulse LEDs to indicate sleep
     if [ -w "/sys/class/led_anim/effect_enable" ]; then
-        echo 1 > /sys/class/led_anim/effect_enable
+        echo 1 > /sys/class/led_anim/effect_enable 2>/dev/null
         echo "0000FF" > /sys/class/led_anim/effect_rgb_hex_lr 2>/dev/null
         echo "5" > /sys/class/led_anim/effect_cycles_lr 2>/dev/null
         echo "1000" > /sys/class/led_anim/effect_duration_lr 2>/dev/null

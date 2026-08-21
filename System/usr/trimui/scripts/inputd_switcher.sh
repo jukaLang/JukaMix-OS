@@ -117,8 +117,12 @@ if [ -f "/mnt/SDCARD/System/usr/trimui/scripts/mainui_state_update.sh" ]; then
 fi
 
 # ── Apply changes (only when NOT during boot) ─────────────────────────
-# During boot, the caller (°customization.sh) handles this
-if [ ! -f /tmp/boot_in_progress ]; then
+# During boot, the caller handles this via boot_in_progress flag
+# Also respect infoscreen_disabled flag set during boot sequence
+if [ -f /tmp/boot_in_progress ] || [ -f /tmp/infoscreen_disabled ]; then
+    # During boot or infoscreen disabled, just apply silently
+    echo "Applying $polling_rate polling rate (boot mode)..."
+else
     # Show message with timeout
     /mnt/SDCARD/System/usr/trimui/scripts/infoscreen.sh -m "Applying $polling_rate polling rate..." -t 1 2>/dev/null
     
@@ -128,9 +132,6 @@ if [ ! -f /tmp/boot_in_progress ]; then
     # Only kill MainUI if we're not in boot mode
     sleep 1
     pkill -KILL MainUI 2>/dev/null
-else
-    # During boot, just apply silently
-    echo "Applying $polling_rate polling rate (boot mode)..."
 fi
 
 exit 0
