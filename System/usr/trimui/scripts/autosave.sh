@@ -140,12 +140,24 @@ EOF
     return 0
 }
 
+# ── Auto-backup saves to vault ───────────────────────────────────────
+auto_backup_saves() {
+    vault_script="$SCRIPTS_DIR/save_vault.sh"
+    if [ -x "$vault_script" ]; then
+        log "Running save vault auto-backup"
+        "$vault_script" auto-backup 2>/dev/null
+    fi
+}
+
 # ── Main ──────────────────────────────────────────────────────────────
 
 # Check each emulator
 save_retroarch
 save_ppsspp
 save_drastic
+
+# Auto-backup saves to vault
+auto_backup_saves
 
 # Save overall state
 mkdir -p "$SAVE_DIR" 2>/dev/null

@@ -23,8 +23,11 @@ fi
 # Normalize device name
 current_device=$(echo "$current_device" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
 
+# Keep brick_pro as its own device identity (don't collapse to brick)
+# Use brick_family when you need to share settings between brick and brick_pro
+brick_family="$current_device"
 case "$current_device" in
-    brick|brick_pro) current_device="brick" ;;
+    brick|brick_pro) brick_family="brick" ;;
 esac
 
 # ── System configuration ──────────────────────────────────────────────
@@ -311,4 +314,10 @@ if [ -x "/mnt/SDCARD/System/usr/trimui/scripts/autoresume.sh" ]; then
     fi
 fi
 
-hostname "TSP"
+# Set device-derived hostname
+case "$current_device" in
+    tg5050)     hostname "JukaMix-TSPS" ;;
+    brick_pro)  hostname "JukaMix-BrickPro" ;;
+    brick)      hostname "JukaMix-Brick" ;;
+    *)          hostname "JukaMix-TSP" ;;
+esac

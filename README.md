@@ -30,8 +30,8 @@ updated emulators, and additional apps. It's completely free and open source.
 | | JukaMix OS |
 |---|---|
 | **Every TrimUI handheld** | Smart Pro, Smart Pro S and Brick from one image — performance profiles, emulator tuning and PortMaster setup adapt automatically to the running device |
-| **Updates that can't brick you** | Transactional updates: every replaced file is backed up and journaled before it's touched, and any failure or interrupted update rolls back automatically |
-| **Your data is untouchable** | ROMs, BIOS, saves, states, screenshots and themes are protected paths — the updater refuses to modify them |
+| **Transactional updates with rollback** | Updates are journaled with automatic rollback on failure — designed to minimize update risks, though power loss or SD corruption can still cause issues |
+| **Protected user data** | ROMs, BIOS, saves, states, screenshots and themes are on protected paths — the updater refuses to modify them |
 | **No computer needed** | Wi-Fi → Control Center → System Update. A background checker toasts you when a release lands |
 | **Integrity-checked updates** | Every file in an update is verified against the release manifest before it's applied |
 | **Self-healing PortMaster** | Missing, broken, or copied without exec bits? It repairs itself on launch |
@@ -45,7 +45,7 @@ updated emulators, and additional apps. It's completely free and open source.
 JukaMix OS includes built-in development tools for scripting and programming:
 
 ### Python Support
-- **Python 3.12** runtime for running `.py` scripts
+- **Python 3.11** runtime for running `.py` scripts
 - **pip** package manager for installing libraries
 - **Apps/PythonRunner** — Easy script execution and interactive shell
 
@@ -75,7 +75,7 @@ split into three philosophies (the last one on different hardware):
 
 | CFW | Devices | Base | Updates | Standout | Watch out |
 |---|---|---|---|---|---|
-| **JukaMix OS** | Smart Pro, Smart Pro S, Brick | Stock firmware | Transactional, in-app over Wi-Fi | One image tuned for all three devices; updates that can't brick you | Younger project; TrimUI devices only |
+| **JukaMix OS** | Smart Pro, Smart Pro S, Brick, Brick Pro | Stock firmware | Transactional, in-app over Wi-Fi | One image tuned for all four devices; transactional updates with rollback | Younger project; TrimUI devices only |
 | **Knulli** | Broad — many handhelds | Batocera / EmulationStation, standalone OS | Full-image reflash | Desktop-grade emulation: scrapers, themes, Bluetooth, netplay | Heavier and slower to boot; higher idle power draw |
 | **Tomato OS** | Original TrimUI Smart only | Stock firmware | Full-image | Pioneering enhanced OS (70+ emulators, ports) for its day | Discontinued; not for the Smart Pro / Smart Pro S / Brick |
 | **MinUI** | Many devices — TrimUI builds are **Legacy** | Minimal libretro launcher | Full-image | Zero-config: boots straight to games, auto-resume | No settings, boxart or themes by default; TrimUI builds being retired |
@@ -122,7 +122,7 @@ Wi-Fi apps) and no tuning; and on TrimUI specifically the Smart Pro and Brick bu
 marked **Legacy** — the project says they "will be retired in a future update", so it's a
 risky pick for a daily driver.
 
-> The short version: want the stock experience with safe updates across all three devices?
+> The short version: want the stock experience with safe updates across all four devices?
 > That's JukaMix. Want a completely different, feature-dense OS? Knulli. Want
 > bare-bones speed? MinUI.
 
@@ -135,49 +135,195 @@ risky pick for a daily driver.
 > **📖 Full installation guide:** See [docs/INSTALLATION.md](docs/INSTALLATION.md) for detailed
 > instructions including rootfs setup, package system (.ipk), and troubleshooting.
 
-**What you need:** a microSD card (FAT32, 32 GB or larger recommended — it holds the OS *and*
-your ROMs), a card reader, and any computer. One image works on all three devices — there is no
-per-device download.
+### What you need
 
-### 1. Format the card
+| Item | Requirement |
+|------|-------------|
+| **microSD card** | FAT32, 32 GB or larger recommended (holds OS + ROMs) |
+| **Card reader** | Any USB or built-in reader works |
+| **Computer** | Windows, macOS, or Linux — any will do |
+| **TrimUI device** | Smart Pro, Smart Pro S, Brick, or Brick Pro |
 
-Format the card as **FAT32**, single partition. Windows: right-click the card → **Format** →
-FAT32 (for cards over 32 GB, where the built-in formatter only offers exFAT/NTFS, use
-[Rufus](https://rufus.ie), the Raspberry Pi Imager, or guiformat). macOS: **Disk Utility** →
-**Erase** → MS-DOS (FAT).
+> **One image works on all four devices** — there is no per-device download.
 
-### 2. Download
+---
 
-Grab the latest `JukaMix_<stamp>.zip` (e.g. `JukaMix_0820202614.zip`) from the
-[latest release](https://github.com/jukaLang/JukaMix-OS/releases/latest). The stamp is the build
-date+hour — `MMDDYYYYHH`, so `0820202614` is August 20, 2026 at 14:00.
+### Step 1 — Format the card
 
-### 3. Extract to the card root
+Format the card as **FAT32**, single partition.
 
-Extract the archive to the **root** of the SD card so that `Apps/`, `Emus/`, `Roms/`,
-`System/` and `trimui/` sit at the top level — **not inside a subfolder**. 7-Zip on Windows
-preserves the layout and file permissions.
+<details>
+<summary><b>Windows</b></summary>
 
-### 4. First boot
+1. Right-click the card → **Format**
+2. Set **File system** to **FAT32**
+3. Click **Start**
 
-Eject the card safely, insert it into the handheld, and power on. First boot takes a few minutes
-while the system initialises.
+> **Cards over 32 GB?** The built-in formatter may only offer exFAT/NTFS.
+> Use [Rufus](https://rufus.ie), [guiformat](https://www.ridgecrop.demon.co.uk/guiformat.htm),
+> or the Raspberry Pi Imager instead.
 
-**If your device's TrimUI firmware is older than the version JukaMix requires** (see
-`trimui/firmwares/MinFwVersion.txt` on the card), a firmware-update wizard runs on first boot:
-it verifies the bundled firmware archive, extracts it, and backs up your settings. **When it
-prompts, press A and let the device power off, then power back on** — the built-in updater
-flashes the firmware. Don't remove the card or interrupt power during this step; it happens only
-once.
+</details>
 
-If the stock launcher appears instead of JukaMix, make sure the SD card is selected as the boot
-source in the device's Settings (Smart Pro) — the Brick boots from SD automatically.
+<details>
+<summary><b>macOS</b></summary>
 
-### 5. Add your content
+1. Open **Disk Utility**
+2. Select the card in the sidebar
+3. Click **Erase**
+4. Set **Format** to **MS-DOS (FAT32)**
+5. Click **Erase**
 
-Drop ROMs into `Roms/<platform>/` and BIOS files into `BIOS/` (see `Emus/<platform>/` for which
-BIOS each system expects), then re-enter the system to refresh the game lists. Themes, icon packs
-and backgrounds are drop-in — see [Customise it](#customise-it).
+</details>
+
+<details>
+<summary><b>Linux</b></summary>
+
+```bash
+# Identify the card (e.g. /dev/sdb)
+lsblk
+
+# Format as FAT32 (REPLACES ALL DATA!)
+sudo mkfs.vfat -F 32 /dev/sdX1
+```
+
+</details>
+
+---
+
+### Step 2 — Download
+
+👉 **[Download latest release](https://github.com/jukaLang/JukaMix-OS/releases/latest)**
+
+Grab the `JukaMix_<stamp>.zip` file (e.g. `JukaMix_0821202601.zip`).
+
+> The stamp is the build date+hour: `MMDDYYYYHH`
+> So `0821202601` = August 21, 2026 at 01:00
+
+---
+
+### Step 3 — Extract to the card root
+
+Extract the archive to the **root** of the SD card — **not into a subfolder**.
+
+✅ **Correct** — You should see this at the card root:
+```
+SD Card/
+├── Apps/
+├── Emus/
+├── Roms/
+├── System/
+└── trimui/
+```
+
+❌ **Wrong** — These mean you extracted incorrectly:
+```
+SD Card/
+└── JukaMix_0821202601/    ← DO NOT extract to a subfolder
+    ├── Apps/
+    └── ...
+```
+
+<details>
+<summary><b>Extraction tips by OS</b></summary>
+
+| OS | Tool | Notes |
+|----|------|-------|
+| **Windows** | [7-Zip](https://www.7-zip.org/) | Right-click → Extract Here (preserves permissions) |
+| **Windows** | WinRAR | Drag contents directly to SD card |
+| **macOS** | Built-in | Double-click zip, drag contents to card |
+| **Linux** | `unzip` | `unzip JukaMix_*.zip -d /path/to/sdcard` |
+
+</details>
+
+---
+
+### Step 4 — First boot
+
+1. **Safely eject** the SD card from your computer
+2. **Insert** the card into your TrimUI device
+3. **Power on** — first boot takes 2-5 minutes while the system initializes
+
+> **What to expect:** The screen may go black briefly, show a JukaMix logo, then load the menu.
+> This is normal on first boot.
+
+<details>
+<summary><b>🔧 Firmware update wizard (if prompted)</b></summary>
+
+If your TrimUI firmware is older than JukaMix requires, a firmware wizard runs automatically:
+
+1. **Press A** when prompted to start the update
+2. **Do NOT remove the card** or turn off the device
+3. **Wait** for the device to power off automatically
+4. **Power back on** — the firmware will be flashed
+
+> This only happens once. See `trimui/firmwares/MinFwVersion.txt` for the required version.
+
+</details>
+
+<details>
+<summary><b>🔧 Stock launcher appears instead of JukaMix?</b></summary>
+
+This usually means the SD card isn't set as the boot source:
+
+- **Smart Pro:** Go to **Settings → Boot Source → SD Card**
+- **Smart Pro S:** Go to **Settings → Boot Source → SD Card**
+- **Brick/Brick Pro:** Boots from SD automatically (no setting needed)
+
+If the option doesn't appear, try reformatting the card and re-extracting the archive.
+
+</details>
+
+<details>
+<summary><b>🔧 Screen flickering or menu crashes?</b></summary>
+
+If you see flickering or the menu crashes:
+
+1. Power off the device (hold power button for 5 seconds)
+2. Remove the SD card
+3. On a computer, delete `System/usr/trimui/jukamix-version.txt` from the card
+4. Reinsert the card and power on — JukaMix will re-initialize
+
+If this persists, re-extract the archive to the card.
+
+</details>
+
+---
+
+### Step 5 — Add your content
+
+Drop your ROMs and BIOS files into the correct folders:
+
+| Content | Where | Example |
+|---------|-------|---------|
+| **ROMs** | `Roms/<SYSTEM>/` | `Roms/GBA/zelda.gba` |
+| **BIOS** | `BIOS/` | `BIOS/scph1001.bin` |
+| **Themes** | `Themes/` | `Themes/MyTheme.7z` |
+| **Icon packs** | `Icons/` | `Icons/MyIcons/` |
+| **Wallpapers** | `Backgrounds/` | `Backgrounds/GBA/wallpaper.png` |
+
+**Supported systems include:**
+`GB`, `GBA`, `GBC`, `NES`, `SNES`, `Genesis`, `PS1`, `N64`, `PSP`, `NDS`, `DC`, `MAME`, `Arcade`, `Neo Geo`, and [many more](Emus/).
+
+> **BIOS help:** Each emulator may require specific BIOS files. Check `Emus/<platform>/` for
+> BIOS requirements — look for files named `*.bin` or `*.rom` in the folder.
+
+> **Themes are drop-in:** Just drop `.7z` theme files into `Themes/`. They appear in the
+> theme selector automatically.
+
+---
+
+### Quick check ✅
+
+After first boot, verify everything works:
+
+- [ ] Menu loads and is responsive
+- [ ] System shows correct device name in **System Info**
+- [ ] At least one game launches
+- [ ] Wi-Fi connects (for updates)
+
+**All good?** You're ready! Head to [Updating](#updating) to learn about OTA updates.
+**Issues?** See [Troubleshooting](#troubleshooting) or ask on [Discord](https://discord.gg/R9qgJjh5jG).
 
 
 
@@ -308,6 +454,23 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the format spec and submission proces
 
 Best pack folders must not contain spaces — the on-device name comes from the pack's
 `config.json` `label`, not the folder name (see `Best/FreeGamesCollection/`).
+
+---
+
+## Troubleshooting
+
+| Problem | Quick Fix |
+|---------|-----------|
+| **Stock launcher appears** | Settings → Boot Source → SD Card (Brick: automatic) |
+| **Screen flickering** | Delete `System/usr/trimui/jukamix-version.txt`, reboot |
+| **Games not showing** | Check ROMs are in `Roms/<SYSTEM>/` with correct extension |
+| **No sound** | Check volume buttons, Settings → Sound |
+| **Wi-Fi won't connect** | Toggle Wi-Fi, reboot, check 2.4GHz network |
+| **Slow performance** | Use Performance Profiles, check game compatibility |
+| **Device won't boot** | Remove SD card → reformat FAT32 → re-extract archive |
+
+> **📖 Full troubleshooting guide:** See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+> for detailed solutions to common issues.
 
 ---
 

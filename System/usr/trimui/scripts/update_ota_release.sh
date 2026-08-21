@@ -31,7 +31,9 @@ main() {
     get_release_info
     if [ $? -eq 1 ]; then
         echo -ne "${YELLOW}"
-        read -n 1 -s -r -p "Press A to exit"
+        echo "Press any button to exit..."
+        # Wait for any button press (controller-compatible)
+        timeout 5 /mnt/SDCARD/System/usr/trimui/scripts/evtest /dev/input/event0 2>/dev/null | head -1 > /dev/null 2>&1
         echo "no release" >/tmp/ota_release_result
         exit
         # killall -2 SimpleTerminal
@@ -40,7 +42,9 @@ main() {
         sync
     fi
     echo -ne "${YELLOW}"
-    read -n 1 -s -r -p "Press A to continue"
+    echo "Press any button to continue..."
+    # Wait for any button press (controller-compatible)
+    timeout 5 /mnt/SDCARD/System/usr/trimui/scripts/evtest /dev/input/event0 2>/dev/null | head -1 > /dev/null 2>&1
     echo -ne "${NC}\n"
     clear
 
@@ -131,7 +135,9 @@ download_update() {
         check_available_space "$(($Release_size_MB + 500))"
         if [ $? -eq 1 ]; then
             echo -ne "${YELLOW}"
-            read -n 1 -s -r -p "Press A to exit"
+            echo "Press any button to exit..."
+        # Wait for any button press (controller-compatible)
+        timeout 5 /mnt/SDCARD/System/usr/trimui/scripts/evtest /dev/input/event0 2>/dev/null | head -1 > /dev/null 2>&1
             exit 3
         fi
         clear
@@ -141,7 +147,9 @@ download_update() {
         if ! [ $? -eq 0 ] || ! [ -f "$updatedir/JukaMix_$Release_Version.zip" ]; then
             echo -e "${RED}JukaMix OS update download has failed!${NC}"
             echo -ne "${YELLOW}"
-            read -n 1 -s -r -p "Press A to exit"
+            echo "Press any button to exit..."
+        # Wait for any button press (controller-compatible)
+        timeout 5 /mnt/SDCARD/System/usr/trimui/scripts/evtest /dev/input/event0 2>/dev/null | head -1 > /dev/null 2>&1
             echo "download failed" >/tmp/ota_release_result
             exit
             # killall -2 SimpleTerminal
@@ -181,7 +189,9 @@ apply_update() {
             echo -e "${RED}Update Script upgrade has failed!${NC}"
             echo -ne "${YELLOW}"
             echo "download failed" >/tmp/ota_release_result
-            read -n 1 -s -r -p "Press A to exit"
+            echo "Press any button to exit..."
+        # Wait for any button press (controller-compatible)
+        timeout 5 /mnt/SDCARD/System/usr/trimui/scripts/evtest /dev/input/event0 2>/dev/null | head -1 > /dev/null 2>&1
             exit
             # killall -2 SimpleTerminal
         fi

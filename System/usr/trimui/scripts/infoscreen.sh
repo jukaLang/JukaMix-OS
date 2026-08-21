@@ -4,6 +4,17 @@ if [ -f "/tmp/infoscreen_disabled" ]; then
     exit 0
 fi
 
+# /tmp/boot_in_progress is set by System/starts/°customization.sh and
+# °post_starts.sh around their own inputd_switcher.sh call. It's meant to
+# stop a status toast from appearing/racing during that reinit, but until
+# now only inputd_switcher.sh itself checked it before calling in -- the
+# other ~170+ call sites across the repo did not, so the flag protected one
+# call path and not the rest. Checking it here instead covers all of them
+# from a single place.
+if [ -f "/tmp/boot_in_progress" ]; then
+    exit 0
+fi
+
 # Function to display usage
 usage() {
     echo "Usage: [options]"

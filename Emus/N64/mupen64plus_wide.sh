@@ -15,41 +15,36 @@ MUPEN_DIR="/mnt/SDCARD/RetroArch/.retroarch/config/Mupen64Plus GLES2"
 ROM_PATH="$1"
 ROM_NAME=$(basename "$ROM_PATH" | sed 's/\.[^.]*$//')
 
-# Paths to the source files
+# Paths to the source config files
 N64_CFG="$MUPEN_DIR/N64.cfg"
 N64_OPT="$MUPEN_DIR/Mupen64Plus GLES2.opt"
 
-# Paths to the destination files
-ROM_CFG="$MUPEN_DIR/$ROM_NAME.cfg"
-ROM_OPT="$MUPEN_DIR/$ROM_NAME.opt"
+# Use a private temp directory for per-ROM configs
+TEMP_DIR="/tmp/mupen_wide_$$"
+mkdir -p "$TEMP_DIR"
+ROM_CFG="$TEMP_DIR/$ROM_NAME.cfg"
+ROM_OPT="$TEMP_DIR/$ROM_NAME.opt"
 
-# Create empty files if the source files do not exist
-[ ! -f "$N64_CFG" ] && touch "$N64_CFG"
-[ ! -f "$N64_OPT" ] && touch "$N64_OPT"
+# Cleanup trap: always remove temp files on exit
+cleanup() {
+    rm -f "$ROM_CFG" "$ROM_OPT" 2>/dev/null
+    rmdir "$TEMP_DIR" 2>/dev/null
+}
+trap cleanup EXIT INT TERM HUP
 
-# Check if the destination files exist
-if [ ! -f "$ROM_CFG" ] && [ ! -f "$ROM_OPT" ]; then
-    # Copy the configuration files with the new name
-    cp "$N64_CFG" "$ROM_CFG"
-    cp "$N64_OPT" "$ROM_OPT"
-    echo "Copied $N64_CFG to $ROM_CFG"
-    echo "Copied $N64_OPT to $ROM_OPT"
-
-    # Apply the configuration patches
-
-    echo "/mnt/SDCARD/System/usr/trimui/scripts/patch_ra_cfg.sh $MUPEN_DIR/widescreen.cfg $ROM_CFG"
-    /mnt/SDCARD/System/usr/trimui/scripts/patch_ra_cfg.sh "$MUPEN_DIR/widescreen.cfg" "$ROM_CFG"
-    /mnt/SDCARD/System/usr/trimui/scripts/patch_ra_cfg.sh "$MUPEN_DIR/widescreen.opt" "$ROM_OPT"
-    echo "Patch applied to $ROM_CFG"
-    echo "Patch applied to $ROM_OPT"
-
-    HOME="$RA_DIR"/ "$RA_BIN" -v -L "$RA_DIR"/.retroarch/cores/mupen64plus_libretro.so "$@"
-    # cleaning
-    rm "$ROM_CFG"
-    rm "$ROM_OPT"
-else
-    message="The following files already exist:"
-    [ -f "$ROM_CFG" ] && message="$message $ROM_CFG"
-    [ -f "$ROM_OPT" ] && message="$message $ROM_OPT"
-    echo "$message"
+# Verify source config files exist
+if [ ! -f "$N64_CFG" ] || [ ! -f "$N64_OPT" ]; then
+    echo "Error: Missing default config files in $MUPEN_DIR"
+    exit 1
 fi
+
+# Copy the configuration files to temp directory
+cp "$N64_CFG" "$ROM_CFG"
+cp "$N64_OPT" "$ROM_OPT"
+
+# Apply widescreen patches
+/mnt/SDCARD/System/usr/trimui/scripts/patch_ra_cfg.sh "$MUPEN_DIR/widescreen.cfg" "$ROM_CFG"
+/mnt/SDCARD/System/usr/trimui/scripts/patch_ra_cfg.sh "$MUPEN_DIR/widescreen.opt" "$ROM_OPT"
+
+# Launch the game
+HOME="$RA_DIR"/ "$RA_BIN" -v -L "$RA_DIR"/.retroarch/cores/mupen64plus_libretro.so "$@"

@@ -72,16 +72,10 @@ clear_notes() {
         return
     fi
     
-    echo "Clear all notes for: $game_name? (y/n)"
-    read -r confirm
-    
-    if [ "$confirm" = "y" ]; then
-        rm -f "$notes_file"
-        log "Cleared notes for: $game_name"
-        echo "Notes cleared"
-    else
-        echo "Cancelled"
-    fi
+    # Auto-clear without confirmation (no keyboard on device)
+    rm -f "$notes_file"
+    log "Cleared notes for: $game_name"
+    echo "Notes cleared for: $game_name"
 }
 
 # ── List games with notes ──────────────────────────────────────────────

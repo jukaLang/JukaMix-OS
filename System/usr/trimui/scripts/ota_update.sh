@@ -32,7 +32,9 @@ main() {
 			echo -ne "${GREEN}DONE${NC}\n\n\n"
 			echo -e "No hotfix available for JukaMix v$Local_JukaMixVersion.\n"
 			echo -ne "${YELLOW}"
-			read -n 1 -s -r -p "Press A to exit"
+			echo "Press any button to exit..."
+			# Wait for any button press (controller-compatible)
+			timeout 5 /mnt/SDCARD/System/usr/trimui/scripts/evtest /dev/input/event0 2>/dev/null | head -1 > /dev/null 2>&1
 		fi
 	fi
 	sleep 2

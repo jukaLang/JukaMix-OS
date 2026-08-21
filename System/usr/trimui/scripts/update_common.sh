@@ -36,7 +36,9 @@ check_connection() {
     else
         echo -e "${RED}FAIL${NC}\nError: https://github.com not reachable. Check your wifi connection."
         echo -ne "${YELLOW}"
-        read -n 1 -s -r -p "Press A to exit"
+        echo "Press any button to exit..."
+        # Wait for any button press (controller-compatible)
+        timeout 5 /mnt/SDCARD/System/usr/trimui/scripts/evtest /dev/input/event0 2>/dev/null | head -1 > /dev/null 2>&1
         exit 2
     fi
 }

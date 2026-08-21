@@ -1,0 +1,49 @@
+name: CI Gate - Release Validation
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Run in release mode (fail on errors)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  ci-gate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck jq
+      
+      - name: Make scripts executable
+        run: chmod +x scripts/ci_gate.sh
+      
+      - name: Run CI Gate
+        run: |
+          if [ "${{ github.event.inputs.release }}" = "true" ]; then
+            ./scripts/ci_gate.sh --release --verbose
+          else
+            ./scripts/ci_gate.sh --verbose
+          fi
+      
+      - name: Upload CI Gate Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-report
+          path: |
+            ci-gate-*.log
+          retention-days: 30

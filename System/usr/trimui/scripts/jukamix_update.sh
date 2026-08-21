@@ -62,7 +62,9 @@ echo "${BLUE}======  Updating JukaMix OS v$Local_JukaMixVersion to v$update_vers
 check_available_space "5000"
     if [ $? -eq 1 ]; then
         echo -ne "${YELLOW}"
-        read -n 1 -s -r -p "Press A to exit"
+        echo "Press any button to exit..."
+        # Wait for any button press (controller-compatible)
+        timeout 5 /mnt/SDCARD/System/usr/trimui/scripts/evtest /dev/input/event0 2>/dev/null | head -1 > /dev/null 2>&1
         exit 3
     fi
 

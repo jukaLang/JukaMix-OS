@@ -73,8 +73,9 @@ show_preview() {
     echo "Screenshot taken: $filename"
     echo "Location: $image"
     echo ""
-    echo "Press any key to continue..."
-    read -r -n 1 -s
+    echo "Press any button to continue..."
+    # Wait for any button press (controller-compatible)
+    timeout 3 /mnt/SDCARD/System/usr/trimui/scripts/evtest /dev/input/event0 2>/dev/null | head -1 > /dev/null 2>&1
 }
 
 # ── List screenshots ───────────────────────────────────────────────────
@@ -119,16 +120,10 @@ delete_all() {
         return
     fi
     
-    echo "Delete all $count screenshots? (y/n)"
-    read -r confirm
-    
-    if [ "$confirm" = "y" ]; then
-        rm -f "$SCREENSHOTS_DIR"/*.png "$THUMBNAILS_DIR"/*.png
-        log "Deleted all screenshots"
-        echo "Deleted all screenshots"
-    else
-        echo "Cancelled"
-    fi
+    # Auto-delete without confirmation (no keyboard on device)
+    rm -f "$SCREENSHOTS_DIR"/*.png "$THUMBNAILS_DIR"/*.png 2>/dev/null
+    log "Deleted all screenshots"
+    echo "Deleted all screenshots"
 }
 
 # ── Export screenshots ─────────────────────────────────────────────────
