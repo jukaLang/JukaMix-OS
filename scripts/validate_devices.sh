@@ -88,6 +88,13 @@ device_files() {
 				"Profiles/DEVICE-OVERRIDES/brick_base.cfg" \
 				"System/usr/trimui/scripts/tsp_cpufreq.sh"
 			;;
+		brick_pro)
+			# Brick Pro uses the same A133 Plus SoC as TSP; it reuses the TSP
+			# inputd and cpufreq ladder. Only the base profile is Brick Pro-specific.
+			printf '%s\n' \
+				"Profiles/DEVICE-OVERRIDES/brick_pro_base.cfg" \
+				"System/usr/trimui/scripts/tsp_cpufreq.sh"
+			;;
 	esac
 }
 
@@ -144,7 +151,7 @@ fi
 # ---- per-device checks ------------------------------------------------------
 for _dev in $DEVICES; do
 	case "$_dev" in
-		tsp|tg5050|brick) ;;
+		tsp|tg5050|brick|brick_pro) ;;
 		*) bad "unsupported device: $_dev"; continue ;;
 	esac
 
@@ -158,9 +165,10 @@ for _dev in $DEVICES; do
 
 	# The standalone detection script must map the device code to the right profile.
 	case "$_dev" in
-		tsp)    _profile=trimui-smart-pro ;;
-		tg5050) _profile=trimui-smart-pro-s ;;
-		brick)  _profile=trimui-brick ;;
+		tsp)        _profile=trimui-smart-pro ;;
+		tg5050)     _profile=trimui-smart-pro-s ;;
+		brick)      _profile=trimui-brick ;;
+		brick_pro)  _profile=trimui-brick-pro ;;
 	esac
 	# scripts/detect_device.sh is host-side scaffolding, excluded from the
 	# release image; validate it when present (repo/CI runs), otherwise the
@@ -182,7 +190,7 @@ for _dev in $DEVICES; do
 	# is a vertical 4:3 touchscreen with no analog sticks or rumble.
 	_cap_list="horizontal_display analog_sticks rumble opengl stereo_audio"
 	case "$_dev" in
-		tsp|tg5050)
+		tsp|tg5050|brick_pro)
 			_cap_exp="horizontal_display:SUPPORTED analog_sticks:SUPPORTED rumble:SUPPORTED opengl:SUPPORTED stereo_audio:SUPPORTED"
 			;;
 		brick)

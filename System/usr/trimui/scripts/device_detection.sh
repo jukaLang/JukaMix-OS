@@ -42,29 +42,9 @@ is_tg5050() {
     [ "$CURRENT_DEVICE" = "tg5050" ]
 }
 
-# Function to check if running on high-performance device
-is_high_performance() {
-    [ "$DEVICE_PERFORMANCE_TIER" = "high" ]
-}
-
-# Function to check if running on standard-performance device
-is_standard_performance() {
-    [ "$DEVICE_PERFORMANCE_TIER" = "standard" ]
-}
-
-# Function to check if running on low-performance device
-is_low_performance() {
-    [ "$DEVICE_PERFORMANCE_TIER" = "low" ]
-}
-
 # Function to check if running on Brick Pro
 is_brick_pro() {
     [ "$CURRENT_DEVICE" = "brick_pro" ] || [ "$CURRENT_DEVICE" = "brickpro" ]
-}
-
-# Function to check if running on TG5050
-is_tg5050() {
-    [ "$CURRENT_DEVICE" = "tg5050" ]
 }
 
 # Function to check if running on high-performance device

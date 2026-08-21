@@ -152,11 +152,11 @@ jobs:
           done
           sh tools/jukamix-mkfeed.sh /home/runner/work/JukaMix-OS/feed
           ls -la /home/runner/work/JukaMix-OS/feed
-      - name: Validate devices (tsp + tg5050 + brick)
+      - name: Validate devices (tsp + tg5050 + brick + brick_pro)
         run: |
           cd /home/runner/work/JukaMix-OS/JukaMix-OS
           bash scripts/validate_devices.sh . \
-            --devices "tsp tg5050 brick" \
+            --devices "tsp tg5050 brick brick_pro" \
             --version "${{ env.BUILD_VERSION }}" \
             --manifest /home/runner/work/JukaMix-OS/manifest.txt
 
@@ -168,11 +168,14 @@ jobs:
           # Excludes mirror scripts/build_release.sh's stage (kept in sync):
           # host-side scaffolding plus protected user-data dirs that the updater
           # promises to never touch.
-          zip -r "/home/runner/work/JukaMix-OS/JukaMix_${{ env.BUILD_VERSION }}.zip" ./* \
+          zip -r -9 "/home/runner/work/JukaMix-OS/JukaMix_${{ env.BUILD_VERSION }}.zip" ./* \
             -x "./scripts/*" -x "./tests/*" -x "./schemas/*" -x "./packages/*" \
             -x "*.zip" -x "*.log" -x "./MANIFEST.json" -x "./jukauser.json" \
             -x "./.VolumeIcon.icns" -x "./autorun.inf" \
-            -x "./.gitignore" -x "./.gitattributes"
+            -x "./.gitignore" -x "./.gitattributes" \
+            -x "./output/*" \
+            -x "./RetroArch/.retroarch/cores/*.so" \
+            -x "./RetroArch/.retroarch/cores/*.info"
       - name: Split release zip (GitHub 2GB limit)
         run: |
           cd /home/runner/work/JukaMix-OS
@@ -210,11 +213,22 @@ jobs:
         run: |
           cd /home/runner/work/JukaMix-OS
           
-          # Upload main zip
-          echo "Uploading main release zip..."
-          gh release upload "JukaMix_${{ env.BUILD_VERSION }}" \
-            "JukaMix_${{ env.BUILD_VERSION }}.zip" \
-            --repo ${{ github.repository }} --clobber
+          # Upload main zip or split parts (never both)
+          if [ "${{ env.PARTS_CREATED }}" = "true" ]; then
+            echo "Uploading split parts (original zip too large for single upload)..."
+            for part in JukaMix_${{ env.BUILD_VERSION }}.part.*; do
+              [ -f "$part" ] || continue
+              echo "Uploading $part..."
+              gh release upload "JukaMix_${{ env.BUILD_VERSION }}" \
+                "$part" \
+                --repo ${{ github.repository }} --clobber
+            done
+          else
+            echo "Uploading main release zip..."
+            gh release upload "JukaMix_${{ env.BUILD_VERSION }}" \
+              "JukaMix_${{ env.BUILD_VERSION }}.zip" \
+              --repo ${{ github.repository }} --clobber
+          fi
           
           # Upload manifest
           echo "Uploading manifest..."
@@ -238,17 +252,7 @@ jobs:
             "output/rootfs-tsp-brick.ext2" \
             --repo ${{ github.repository }} --clobber
           
-          # Upload split parts if they exist
-          if [ "${{ env.PARTS_CREATED }}" = "true" ]; then
-            echo "Uploading split parts..."
-            for part in JukaMix_${{ env.BUILD_VERSION }}.part.*; do
-              [ -f "$part" ] || continue
-              echo "Uploading $part..."
-              gh release upload "JukaMix_${{ env.BUILD_VERSION }}" \
-                "$part" \
-                --repo ${{ github.repository }} --clobber
-            done
-          fi
+
           
           echo "All assets uploaded successfully"
         env:
