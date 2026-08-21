@@ -1,0 +1,13 @@
+{
+  "label": "Commodore 64",
+  "icon": "/mnt/SDCARD/Icons/Default/Emus/COMMODORE.png",
+  "background": "/mnt/SDCARD/Backgrounds/Default/COMMODORE.png",
+  "iconsel": "",
+  "launch": "vice_x64.sh",
+  "rompath": "../../Roms/COMMODORE",
+  "imgpath": "../../Imgs/COMMODORE",
+  "useswap": 0,
+  "shortname": 0,
+  "hidebios": 1,
+  "extlist": "7z|crt|d64|nib|prg|t64|tap|zip"
+}

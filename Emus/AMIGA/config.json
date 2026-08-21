@@ -1,14 +1,13 @@
 {
-  "label": "AMIGA",
+  "label": "Amiga",
   "icon": "/mnt/SDCARD/Icons/Default/Emus/AMIGA.png",
-  "iconsmall": "ic-AMIGA-small.png",
-  "iconlist": "ic-AMIGA-list.png",
   "background": "/mnt/SDCARD/Backgrounds/Default/AMIGA.png",
-  "themecolor": "FFFF88",
-  "launch": "default.sh",
+  "iconsel": "",
+  "launch": "puae.sh",
   "rompath": "../../Roms/AMIGA",
   "imgpath": "../../Imgs/AMIGA",
-  "useswap": 1,
+  "useswap": 0,
   "shortname": 0,
-  "hidebios": 1
+  "hidebios": 1,
+  "extlist": "7z|adf|adz|ccd|chd|cue|dms|fdi|hdf|hdz|info|ipf|iso|lha|m3u|mds|nrg|rp9|slave|uae|zip"
 }

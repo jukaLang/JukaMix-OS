@@ -1,0 +1,13 @@
+{
+  "label": "Game Tank",
+  "icon": "/mnt/SDCARD/Icons/Default/Emus/GAMETANK.png",
+  "background": "/mnt/SDCARD/Backgrounds/Default/GAMETANK.png",
+  "iconsel": "",
+  "launch": "gametank.sh",
+  "rompath": "../../Roms/GAMETANK",
+  "imgpath": "../../Imgs/GAMETANK",
+  "useswap": 0,
+  "shortname": 0,
+  "hidebios": 1,
+  "extlist": "7z|gtr|zip"
+}

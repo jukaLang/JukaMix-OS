@@ -1,0 +1,13 @@
+{
+  "label": "PICO-8",
+  "icon": "/mnt/SDCARD/Icons/Default/Emus/FAKE08.png",
+  "background": "/mnt/SDCARD/Backgrounds/Default/FAKE08.png",
+  "iconsel": "",
+  "launch": "fake08.sh",
+  "rompath": "../../Roms/FAKE08",
+  "imgpath": "../../Imgs/FAKE08",
+  "useswap": 0,
+  "shortname": 0,
+  "hidebios": 1,
+  "extlist": "p8|png"
+}

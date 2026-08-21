@@ -1,0 +1,13 @@
+{
+  "label": "Odyssey 2",
+  "icon": "/mnt/SDCARD/Icons/Default/Emus/ODYSSEY.png",
+  "background": "/mnt/SDCARD/Backgrounds/Default/ODYSSEY.png",
+  "iconsel": "",
+  "launch": "o2em.sh",
+  "rompath": "../../Roms/ODYSSEY",
+  "imgpath": "../../Imgs/ODYSSEY",
+  "useswap": 0,
+  "shortname": 0,
+  "hidebios": 1,
+  "extlist": "7z|bin|zip"
+}

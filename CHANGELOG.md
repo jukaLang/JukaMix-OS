@@ -149,9 +149,7 @@ on all three devices.
 
 - README overhaul: accurate install flow (first-boot firmware wizard, FAT32
   formatter caveat, extract-to-root), Updating section matching the real
-  transactional flow, honest feature rows, working Discord invite,
-  CFW comparison (JukaMix vs CrossMix, Knulli, Tomato, Spruce, NextUI, MinUI,
-  GammaOS).
+  transactional flow, honest feature rows, working Discord invite,CFW comparison (JukaMix vs CrossMix, Knulli, Tomato, NextUI, MinUI, GammaOS).
 - `jukamix-version.txt` — renamed from CrossMix's `crossmix-version.txt`, now
   holds the date+hour build stamp.
 - `CONTRIBUTING.md` added (Best-pack format spec, shell rules, PR process);

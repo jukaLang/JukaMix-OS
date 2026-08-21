@@ -1,30 +1,72 @@
 #!/bin/sh
+# Emus/PSP/ppsspp_gl.sh - PPSSPP with OpenGL backend (TrimUI-specific build)
+# Cross-compiled with gcc10.3, libc2.33, SDL2-2.30.8 for TrimUI firmware 1.1.0+
+
 . /mnt/SDCARD/System/usr/trimui/scripts/common_launcher.sh
 
-# PPSSPP AppImage launcher - OpenGL mode
+# ── Paths ──────────────────────────────────────────────────────────────
+PPSSPP_BASE="/mnt/SDCARD/Emus/PSP/PPSSPP"
+PPSSPP_BINARY="$PPSSPP_BASE/PPSSPPSDL_gl"
+PPSSPP_CONFIG="$PPSSPP_BASE/.config/ppsspp"
 
-performance=$(grep -i "dowork 0x" "/tmp/log/messages" | tail -n 1 | grep -i "Perf.")
-if [ -n "$performance" ]; then
-    if [ "$JUKAMIX_DEVICE_OPTIMIZED" = "tg5050" ]; then
-        cpufreq.sh ondemand 3 9
+# ── Detect device ──────────────────────────────────────────────────────
+detect_device() {
+    if [ -f /sys/firmware/devicetree/base/model ]; then
+        local model
+        model=$(tr -d '\0' < /sys/firmware/devicetree/base/model 2>/dev/null)
+        case "$model" in
+            *SmartPro*|*smartpro*) echo "tsp" ;;
+            *TG5050*|*tg5050*)     echo "tg5050" ;;
+            *Brick*)               echo "brick" ;;
+            *)                     echo "unknown" ;;
+        esac
     else
-        cpufreq.sh ondemand 3 8
+        echo "unknown"
     fi
-else
-    cpufreq.sh ondemand 3 6
-fi
+}
 
-if [ -f "/tmp/cmd_to_run.sh" ] && ! grep -q "dowork 0x" "/tmp/cmd_to_run.sh"; then
-    sed -i "1s|^|echo \"$performance\" > /tmp/log/messages\n|" "/tmp/cmd_to_run.sh"
-fi
+DEVICE=$(detect_device)
 
-# Force OpenGL backend
-export PPSSPP_GRAPHICS_BACKEND="opengl"
+# ── CPU frequency by device ───────────────────────────────────────────
+set_cpu_freq() {
+    case "$DEVICE" in
+        tg5050)
+            cpufreq.sh ondemand 3 9 2>/dev/null || cpufreq.sh performance 3 2>/dev/null
+            ;;
+        brick_pro)
+            cpufreq.sh ondemand 3 8 2>/dev/null || cpufreq.sh performance 3 2>/dev/null
+            ;;
+        *)
+            cpufreq.sh ondemand 3 7 2>/dev/null || cpufreq.sh performance 3 2>/dev/null
+            ;;
+    esac
+}
 
-PPSSPP_DIR="/mnt/SDCARD/Emus/PSP/PPSSPP"
-if [ -f "$PPSSPP_DIR/PPSSPP.AppImage" ]; then
-    HOME=$PWD "$PPSSPP_DIR/PPSSPP.AppImage" "$*"
-else
-    echo "PPSSPP.AppImage not found in $PPSSPP_DIR" >&2
+# ── Check binary exists ───────────────────────────────────────────────
+if [ ! -f "$PPSSPP_BINARY" ]; then
+    echo "PPSSPP GL binary not found: $PPSSPP_BINARY" >&2
     exit 1
 fi
+
+# ── Setup config directory ────────────────────────────────────────────
+mkdir -p "$PPSSPP_CONFIG/PSP"
+mkdir -p "$PPSSPP_CONFIG/PSP/Cheats"
+mkdir -p "$PPSSPP_CONFIG/PSP/GAME"
+mkdir -p "$PPSSPP_CONFIG/PSP/PLUGINS"
+mkdir -p "$PPSSPP_CONFIG/PSP/PPSSPP_STATE"
+mkdir -p "$PPSSPP_CONFIG/PSP/SAVEDATA"
+mkdir -p "$PPSSPP_CONFIG/PSP/SYSTEM"
+mkdir -p "$PPSSPP_CONFIG/PSP/TEXTURES"
+
+# ── Set environment ───────────────────────────────────────────────────
+export HOME="$PPSSPP_BASE"
+export XDG_CONFIG_HOME="$PPSSPP_CONFIG"
+export PPSSPP_CONFIG_DIR="$PPSSPP_CONFIG"
+
+# ── Set CPU frequency ─────────────────────────────────────────────────
+set_cpu_freq
+
+echo "PPSSPP: OpenGL mode (TrimUI build)" >&2
+
+# ── Launch ────────────────────────────────────────────────────────────
+exec "$PPSSPP_BINARY" "$@"

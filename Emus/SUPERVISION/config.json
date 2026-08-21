@@ -1,15 +1,13 @@
 {
-  "label": "SUPERVISION",
+  "label": "Watara Supervision",
   "icon": "/mnt/SDCARD/Icons/Default/Emus/SUPERVISION.png",
-  "iconsmall": "",
-  "iconlist": "",
   "background": "/mnt/SDCARD/Backgrounds/Default/SUPERVISION.png",
-  "themecolor": "FF0000",
-  "launch": "default.sh",
+  "iconsel": "",
+  "launch": "potator.sh",
   "rompath": "../../Roms/SUPERVISION",
   "imgpath": "../../Imgs/SUPERVISION",
   "useswap": 0,
   "shortname": 0,
-  "hidebios": 0,
-  "extlist": "sv|bin|zip|7z"
+  "hidebios": 1,
+  "extlist": "7z|bin|sv|zip"
 }

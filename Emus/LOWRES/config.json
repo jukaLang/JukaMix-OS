@@ -1,0 +1,13 @@
+{
+  "label": "LowRes NX",
+  "icon": "/mnt/SDCARD/Icons/Default/Emus/LOWRES.png",
+  "background": "/mnt/SDCARD/Backgrounds/Default/LOWRES.png",
+  "iconsel": "",
+  "launch": "lowresnx.sh",
+  "rompath": "../../Roms/LOWRES",
+  "imgpath": "../../Imgs/LOWRES",
+  "useswap": 0,
+  "shortname": 0,
+  "hidebios": 1,
+  "extlist": "pico|zip"
+}

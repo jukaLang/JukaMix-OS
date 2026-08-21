@@ -126,6 +126,13 @@ fi
 # Normal shutdown sequence
 log_message "Starting normal shutdown sequence"
 
+# ── Autosave running games ────────────────────────────────────────────
+log_message "Running autosave for running emulators"
+if [ -f "$SCRIPTS_DIR/autosave.sh" ]; then
+    "$SCRIPTS_DIR/autosave.sh" 2>/dev/null &
+    log_message "Autosave initiated"
+fi
+
 # Set yellow LED to indicate shutdown in progress
 set_led_color 255 255 0 &
 vibrate_short &

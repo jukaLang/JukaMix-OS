@@ -1,0 +1,13 @@
+{
+  "label": "ECWolf",
+  "icon": "/mnt/SDCARD/Icons/Default/Emus/ECWOLF.png",
+  "background": "/mnt/SDCARD/Backgrounds/Default/ECWOLF.png",
+  "iconsel": "",
+  "launch": "ecwolf.sh",
+  "rompath": "../../Roms/WOLF",
+  "imgpath": "../../Imgs/WOLF",
+  "useswap": 0,
+  "shortname": 0,
+  "hidebios": 1,
+  "extlist": "ecwolf|exe|wad"
+}

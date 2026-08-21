@@ -1,0 +1,13 @@
+{
+  "label": "ChaiLove",
+  "icon": "/mnt/SDCARD/Icons/Default/Emus/CHAI.png",
+  "background": "/mnt/SDCARD/Backgrounds/Default/CHAI.png",
+  "iconsel": "",
+  "launch": "chailove.sh",
+  "rompath": "../../Roms/CHAI",
+  "imgpath": "../../Imgs/CHAI",
+  "useswap": 0,
+  "shortname": 0,
+  "hidebios": 1,
+  "extlist": "chailove"
+}

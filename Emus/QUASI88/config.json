@@ -1,0 +1,13 @@
+{
+  "label": "NEC PC-88",
+  "icon": "/mnt/SDCARD/Icons/Default/Emus/QUASI88.png",
+  "background": "/mnt/SDCARD/Backgrounds/Default/QUASI88.png",
+  "iconsel": "",
+  "launch": "quasi88.sh",
+  "rompath": "../../Roms/QUASI88",
+  "imgpath": "../../Imgs/QUASI88",
+  "useswap": 0,
+  "shortname": 0,
+  "hidebios": 1,
+  "extlist": "2d|7z|cmd|d88|dsk|n88|zip"
+}

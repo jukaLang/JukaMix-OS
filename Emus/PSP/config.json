@@ -2,60 +2,37 @@
   "label": "PSP",
   "label.ch.lang": "PSP",
   "icon": "/mnt/SDCARD/Icons/Default/Emus/PSP.png",
-  "launch": "default.sh",
+  "iconsmall": "80.png",
+  "iconlist": "32.png",
   "background": "/mnt/SDCARD/Backgrounds/Default/PSP.png",
   "themecolor": "64A8BD",
-  "iconsel": "",
+  "launch": "default.sh",
   "rompath": "../../Roms/PSP",
   "imgpath": "../../Imgs/PSP",
   "useswap": 1,
   "shortname": 0,
   "hidebios": 0,
+  "extlist": "iso,cso,ppst",
   "launchlist": [
     {
-      "name": "PPSSPP 1.20.4 - Auto",
-      "name.ch.lang": "PPSSPP自动模式",
-      "launch": "launch.sh"
+      "name": "PPSSPP v1.19.0 - OpenGL",
+      "name.ch.lang": "PPSSPP 1.19.0 OpenGL",
+      "launch": "ppsspp_1.19.0_gl.sh"
     },
     {
-      "name": "PPSSPP 1.20.4 - OpenGL",
-      "name.ch.lang": "PPSSPP正常模式",
+      "name": "PPSSPP v1.19.0 - Vulkan",
+      "name.ch.lang": "PPSSPP 1.19.0 Vulkan",
+      "launch": "ppsspp_1.19.0_vulkan.sh"
+    },
+    {
+      "name": "PPSSPP v1.17.1 - OpenGL",
+      "name.ch.lang": "PPSSPP 1.17.1 OpenGL",
       "launch": "ppsspp_gl.sh"
     },
     {
-      "name": "PPSSPP 1.20.4 - Vulkan",
-      "name.ch.lang": "PPSSPP性能模式",
+      "name": "PPSSPP v1.17.1 - Vulkan",
+      "name.ch.lang": "PPSSPP 1.17.1 Vulkan",
       "launch": "ppsspp_vulkan.sh"
-    },
-    {
-      "name": "PPSSPP-1.17.1",
-      "name.ch.lang": "PPSSPP-1.17.1",
-      "launch": "ppsspp_1.17.1_gl.sh"
-    },
-    {
-      "name": "---------- Performance ----------",
-      "name.ch.lang": "---------------------------",
-      "launch": ""
-    },
-    {
-      "name": "PPSSPP 1.20.4 - Auto - Perf.",
-      "name.ch.lang": "PPSSPP自动模式 - Perf.",
-      "launch": "launch.sh"
-    },
-    {
-      "name": "PPSSPP 1.20.4 - OpenGL - Perf.",
-      "name.ch.lang": "PPSSPP正常模式 - Perf.",
-      "launch": "ppsspp_gl.sh"
-    },
-    {
-      "name": "PPSSPP 1.20.4 - Vulkan - Perf.",
-      "name.ch.lang": "PPSSPP性能模式 - Perf.",
-      "launch": "ppsspp_vulkan.sh"
-    },
-    {
-      "name": "PPSSPP-1.17.1 - Perf.",
-      "name.ch.lang": "PPSSPP-1.17.1 - Perf.",
-      "launch": "ppsspp_1.17.1_gl.sh"
     }
   ]
 }

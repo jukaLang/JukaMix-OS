@@ -12,11 +12,12 @@ fi
 bin_dir="/mnt/SDCARD/trimui/app"
 
 read -r device < /etc/trimui_device.txt
-if [ "$device" = "brick" ]; then
-    cp /usr/trimui/bin/trimui_inputd $bin_dir/trimui_inputd
-    [ "$script_name" != "inputd_switcher" ] && infoscreen -m "Feature not supported yet on brick"
-    exit 1
-fi
+# Brick and Brick Pro use the same inputd as TSP (horizontal layout)
+case "$device" in
+    brick|brick_pro)
+        device="tsp"
+        ;;
+esac
 
 # Use the device-specific input daemon when present; otherwise fall back to the
 # Smart Pro (tsp) daemon. The Smart Pro S (tg5050) shares the 1280x720 display

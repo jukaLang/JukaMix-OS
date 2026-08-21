@@ -35,6 +35,9 @@ __pycache__/
 # RetroArch cores archive: ~335MB, downloaded from releases at build time.
 RetroArch/.retroarch/cores/cores.7z
 
+# Core rebuild download cache (scripts/rebuild_cores.sh|.bat|.ps1)
+build/
+
 # PPSSPP AppImage: downloaded from GitHub releases at build time.
 Emus/PSP/PPSSPP/PPSSPP.AppImage
 

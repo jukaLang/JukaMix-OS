@@ -4,7 +4,7 @@
 
 ### One OS for every TrimUI handheld.
 
-Smart Pro · Smart Pro S · Brick — auto-detected, auto-tuned.
+Smart Pro · Smart Pro S · Brick · Brick Pro — auto-detected, auto-tuned.
 
 [![Latest Release](https://img.shields.io/github/v/release/jukaLang/JukaMix-OS?style=for-the-badge&color=6c5ce7)](https://github.com/jukaLang/JukaMix-OS/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/jukaLang/JukaMix-OS/total?style=for-the-badge&color=00b894)](https://github.com/jukaLang/JukaMix-OS/releases)
@@ -48,7 +48,7 @@ split into three philosophies (the last one on different hardware):
 - **Keep the stock firmware** — JukaMix, CrossMix, and (historically) Tomato run as a layer on
   top of the TrimUI firmware, so you keep its drivers, hardware video decode and power
   management. Everything is on the SD card: remove it and the device is stock again.
-- **Replace the OS** — Knulli, Spruce, NextUI and MinUI boot their own system. You gain
+- **Replace the OS** — Knulli, NextUI and MinUI boot their own system. You gain
   control and polish, but trade away the stock firmware's device-specific tuning.
 - **Go Android** — GammaOS swaps the stock OS for a debloated, performance-tuned Android
   build: Play Store, the whole Android app ecosystem, a Daijisho front-end and root. On the
@@ -62,7 +62,6 @@ split into three philosophies (the last one on different hardware):
 | **CrossMix-OS** | Smart Pro (+ Brick in newer releases) | Stock firmware | Full-image | The mature upstream that JukaMix builds on | Full-image updates only; Smart Pro S not covered |
 | **Knulli** | Broad — many handhelds | Batocera / EmulationStation, standalone OS | Full-image reflash | Desktop-grade emulation: scrapers, themes, Bluetooth, netplay | Heavier and slower to boot; higher idle power draw |
 | **Tomato OS** | Original TrimUI Smart only | Stock firmware | Full-image | Pioneering enhanced OS (70+ emulators, ports) for its day | Discontinued; not for the Smart Pro / Smart Pro S / Brick |
-| **Spruce** | Smart Pro, Smart Pro S, Brick + Miyoo/Anbernic family | Custom Python UI, own system | OTA, in-app over Wi-Fi | Polished UI, Game Switcher, Theme Garden, Game Nursery, Syncthing | TrimUI support is a newer port; more Miyoo-tuned |
 | **NextUI** | Brick, Smart Pro, Smart Pro S | MinUI fork with rebuilt emulation engine | Full-image | Fast, low-latency, feature-packed (shaders, WiFi, LEDs, cheats, paks) | PolyForm **non-commercial** license |
 | **MinUI** | Many devices — TrimUI builds are **Legacy** | Minimal libretro launcher | Full-image | Zero-config: boots straight to games, auto-resume | No settings, boxart or themes by default; TrimUI builds being retired |
 | **GammaOS / Next / Nano** | Android handhelds (Anbernic, AYANEO, Retroid, …) + TrimUI Smart Pro & Brick via **Nano** (A133P) | LineageOS-based Android (12, now 13/14; Nano = lightweight micro-OS) | Full reflash (fastboot / SD image) | The whole Android ecosystem: Play Store, Android apps, Daijisho, root; Nano = console-style home | Needs a PC to flash; full-image updates; some Nano releases launch Patreon-gated |
@@ -106,18 +105,6 @@ Smart, with 70+ built-in emulators, ports and customization.
 **Disadvantages** — built for the original TrimUI Smart only and no longer maintained; it
 does **not** run on the Smart Pro, Smart Pro S or Brick. Listed here mainly so you don't
 install it by mistake.
-
-### Spruce
-
-**Advantages** — sleek, heavily themeable Python UI (Theme Garden with 80+ themes); Game
-Switcher for save-state juggling; autosave on shutdown / autoresume on boot; OTA updates;
-Game Nursery for free ports and homebrew; network services (Syncthing, Samba, SSH,
-RetroAchievements) and native Pico-8; covers all three TrimUI devices plus the Miyoo and
-Anbernic families.
-
-**Disadvantages** — a separate OS rather than a stock-firmware layer; TrimUI support is a
-newer port, so features and tuning are still more Miyoo-focused; you manage your own system
-partition and updates.
 
 ### NextUI
 
@@ -163,15 +150,17 @@ covers Android handhelds only — the Smart Pro S (A523 SoC) is not supported.
 
 > The short version: want the stock experience with safe updates across all three devices?
 > That's JukaMix. Want a completely different, feature-dense OS? Knulli or NextUI. Want
-> bare-bones speed? MinUI. Want a polished all-rounder with a big family of devices? Spruce.
-> Want the Android ecosystem — even on the Smart Pro or Brick? GammaOS (Nano on TrimUI,
-> Next on Android handhelds) is the pick.
+> bare-bones speed? MinUI. Want the Android ecosystem — even on the Smart Pro or Brick?
+> GammaOS (Nano on TrimUI, Next on Android handhelds) is the pick.
 
 ---
 
 ## Install
 
 > First time on JukaMix? Start here. Already running it? Skip to [Updating](#updating).
+>
+> **📖 Full installation guide:** See [docs/INSTALLATION.md](docs/INSTALLATION.md) for detailed
+> instructions including rootfs setup, package system (.ipk), and troubleshooting.
 
 **What you need:** a microSD card (FAT32, 32 GB or larger recommended — it holds the OS *and*
 your ROMs), a card reader, and any computer. One image works on all three devices — there is no
@@ -261,10 +250,11 @@ full image fall back to the classic full-image installer, which also migrates sa
 | **TrimUI Smart Pro** | `tsp` | Allwinner A133 Plus | Mali-G31 | 1280×720 (16:9) | Flagship target, dual analog |
 | **TrimUI Smart Pro S** | `tg5050` | Allwinner A523 | Mali-G57 | 1280×720 (16:9) | Fastest of the three, dual analog |
 | **TrimUI Brick** | `brick` | Allwinner A133 Plus | Mali-G31 | 1024×768 (4:3, touch) | No analog sticks, no rumble |
+| **TrimUI Brick Pro** | `brick_pro` | Allwinner A133 Plus | Mali-G31 | 1280×720 (16:9) | Same as Smart Pro, dual analog |
 
 Every emulator launcher tunes the CPU to its device's own ceiling via
 `cpufreq.sh ondemand 2 "${JUKAMIX_CPUFREQ_MAX:-6}"`: **Smart Pro S** runs at up to
-2.0 GHz, **Smart Pro** at 1.8 GHz and **Brick** at 1.6 GHz (the `[recommended_defaults]` of each
+2.0 GHz, **Smart Pro** and **Brick Pro** at 1.8 GHz and **Brick** at 1.6 GHz (the `[recommended_defaults]` of each
 `Profiles/DEVICE-OVERRIDES/*_base.cfg`). Launchers written for the faster A523 are clamped to the
 closest valid frequency on the A133 instead of being rejected, so the same image tunes every
 device correctly.

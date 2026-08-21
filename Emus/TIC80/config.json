@@ -1,0 +1,13 @@
+{
+  "label": "TIC-80",
+  "icon": "/mnt/SDCARD/Icons/Default/Emus/TIC80.png",
+  "background": "/mnt/SDCARD/Backgrounds/Default/TIC80.png",
+  "iconsel": "",
+  "launch": "tic80.sh",
+  "rompath": "../../Roms/TIC80",
+  "imgpath": "../../Imgs/TIC80",
+  "useswap": 0,
+  "shortname": 0,
+  "hidebios": 1,
+  "extlist": "7z|fd|k7|m7|rom|sap|tic|zip"
+}

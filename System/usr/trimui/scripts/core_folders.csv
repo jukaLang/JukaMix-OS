@@ -61,6 +61,7 @@ libfceumm.so;
 libmgba.so;
 lowresnx_libretro.so;LowRes NX;
 lutro_libretro.so;lutro;
+libgametank_libretro.so;GameTank;
 mame2000_libretro.so;MAME 2000;
 mame2003_libretro.so;MAME 2003 (0.78);
 mame2003_plus_libretro.so;MAME 2003-Plus;

@@ -1,15 +1,13 @@
 {
   "label": "DOOM",
   "icon": "/mnt/SDCARD/Icons/Default/Emus/DOOM.png",
-  "iconsmall": "ic-C64-small.png",
-  "iconlist": "ic-C64-list.png",
   "background": "/mnt/SDCARD/Backgrounds/Default/DOOM.png",
-  "themecolor": "FFFF88",
-  "launch": "default.sh",
+  "iconsel": "",
+  "launch": "prboom.sh",
   "rompath": "../../Roms/DOOM",
   "imgpath": "../../Imgs/DOOM",
-  "useswap": 1,
+  "useswap": 0,
   "shortname": 0,
-  "extlist": "wad|iwad|pwad|7z|zip|pk3|ipk3",
-  "hidebios": 1
+  "hidebios": 1,
+  "extlist": "wad|exe|zip"
 }

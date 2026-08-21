@@ -1,14 +1,13 @@
 {
-  "label": "SHARP x1",
+  "label": "Sharp X1",
   "icon": "/mnt/SDCARD/Icons/Default/Emus/X1.png",
-  "iconsmall": "ic-X1-small.png",
-  "iconlist": "ic-X1-list.png",
   "background": "/mnt/SDCARD/Backgrounds/Default/X1.png",
-  "themecolor": "FFFF88",
-  "launch": "default.sh",
+  "iconsel": "",
+  "launch": "x1.sh",
   "rompath": "../../Roms/X1",
   "imgpath": "../../Imgs/X1",
-  "useswap": 1,
+  "useswap": 0,
   "shortname": 0,
-  "hidebios": 1
+  "hidebios": 1,
+  "extlist": "2hd|7z|cmd|d88|dim|dup|hdf|hdm|img|m3u|xdf|zip"
 }

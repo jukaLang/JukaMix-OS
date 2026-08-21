@@ -1,5 +1,6 @@
 {
   "label": "JAVA",
+  "label.ch.lang": "JAVA",
   "icon": "/mnt/SDCARD/Icons/Default/Emus/JAVA.png",
   "iconsmall": "80.png",
   "iconlist": "32.png",
@@ -11,15 +12,42 @@
   "useswap": 1,
   "shortname": 1,
   "hidebios": 1,
-  "extlist": "jar",
+  "extlist": "jar,jad",
   "launchlist": [
     {
-      "name": "Launch freej2me",
+      "name": "FreeJ2ME - Auto Resolution",
+      "name.ch.lang": "FreeJ2ME \u81ea\u52a8\u5206\u8fa8\u7387",
       "launch": "launch.sh"
     },
     {
-      "name": "Switch resolution",
-      "launch": "launch.sh"
+      "name": "FreeJ2ME - Choose Resolution",
+      "name.ch.lang": "FreeJ2ME \u9009\u62e9\u5206\u8fa8\u7387",
+      "launch": "launch_select.sh"
+    },
+    {
+      "name": "FreeJ2ME - 240x320",
+      "name.ch.lang": "FreeJ2ME 240x320",
+      "launch": "launch_240x320.sh"
+    },
+    {
+      "name": "FreeJ2ME - 320x240",
+      "name.ch.lang": "FreeJ2ME 320x240",
+      "launch": "launch_320x240.sh"
+    },
+    {
+      "name": "FreeJ2ME - 176x208",
+      "name.ch.lang": "FreeJ2ME 176x208",
+      "launch": "launch_176x208.sh"
+    },
+    {
+      "name": "FreeJ2ME - 128x128",
+      "name.ch.lang": "FreeJ2ME 128x128",
+      "launch": "launch_128x128.sh"
+    },
+    {
+      "name": "FreeJ2ME - 640x360",
+      "name.ch.lang": "FreeJ2ME 640x360",
+      "launch": "launch_640x360.sh"
     }
   ]
 }

@@ -1,13 +1,13 @@
 {
-  "label": "ATARIST",
+  "label": "Atari ST",
   "icon": "/mnt/SDCARD/Icons/Default/Emus/ATARIST.png",
   "background": "/mnt/SDCARD/Backgrounds/Default/ATARIST.png",
   "iconsel": "",
-  "launch": "default.sh",
+  "launch": "hatari.sh",
   "rompath": "../../Roms/ATARIST",
   "imgpath": "../../Imgs/ATARIST",
   "useswap": 0,
   "shortname": 0,
   "hidebios": 1,
-  "extlist": ""
+  "extlist": "7z|dim|ipf|msa|stx|st|zip"
 }

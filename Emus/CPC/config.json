@@ -1,13 +1,13 @@
 {
-  "label": "AMSTRAD CPC",
+  "label": "Amstrad CPC",
   "icon": "/mnt/SDCARD/Icons/Default/Emus/CPC.png",
   "background": "/mnt/SDCARD/Backgrounds/Default/CPC.png",
   "iconsel": "",
-  "launch": "default.sh",
+  "launch": "cap32.sh",
   "rompath": "../../Roms/CPC",
   "imgpath": "../../Imgs/CPC",
   "useswap": 0,
   "shortname": 0,
   "hidebios": 1,
-  "extlist": ""
+  "extlist": "7z|bin|dsk|kcr|sna|zip"
 }

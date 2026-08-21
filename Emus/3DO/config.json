@@ -1,0 +1,13 @@
+{
+  "label": "3DO",
+  "icon": "/mnt/SDCARD/Icons/Default/Emus/3DO.png",
+  "background": "/mnt/SDCARD/Backgrounds/Default/3DO.png",
+  "iconsel": "",
+  "launch": "opera.sh",
+  "rompath": "../../Roms/3DO",
+  "imgpath": "../../Imgs/3DO",
+  "useswap": 0,
+  "shortname": 0,
+  "hidebios": 1,
+  "extlist": "bin|chd|cue|iso|zip"
+}
