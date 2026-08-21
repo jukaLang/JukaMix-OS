@@ -256,7 +256,7 @@ done
 ## References
 
 - [Knulli Architecture](https://github.com/knulli-cfw/distribution)
-- [TrimUI Firmware Structure](https://github.com/cizia64/CrossMix-OS)
+- [TrimUI Firmware Info](https://github.com/trimui)
 - [EXT4 on Embedded Linux](https://www.kernel.org/doc/html/latest/filesystems/ext4.html)
 - [Proot for Chroot without Root](https://proot-me.github.io/)
 

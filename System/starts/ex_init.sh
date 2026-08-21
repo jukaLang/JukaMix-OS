@@ -4,7 +4,7 @@
 
 mkdir -p ~/.config/
 
-# One-time root filesystem bootstrap (replaces the legacy CrossMix ex_update patches).
+# One-time root filesystem bootstrap.
 mkdir -p /etc/ssl/certs/
 if [ ! -f /etc/ssl/certs/ca-certificates.crt ] && [ -f /mnt/SDCARD/System/etc/ca-certificates.crt ]; then
     cp -f /mnt/SDCARD/System/etc/ca-certificates.crt /etc/ssl/certs/

@@ -508,7 +508,7 @@ sudo chroot /mnt/SDCARD/chroot-minimal /bin/bash
 
 - [Buildroot Manual](https://buildroot.org/downloads/manual/manual.html)
 - [Buildroot for ARM](https://buildroot.org/downloads/manual/manual.html#_toolchain)
-- [TrimUI Device Info](https://github.com/cizia64/CrossMix-OS)
+- [TrimUI Device Info](https://github.com/trimui)
 - [Chroot on Embedded Linux](https://www.kernel.org/doc/html/latest/filesystems/chroot.html)
 
 ---

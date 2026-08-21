@@ -1,0 +1,9 @@
+{
+    "label": "Python Runner",
+    "icon": "/mnt/SDCARD/Icons/Default/Apps/PYTHON.png",
+    "iconsmall": "80.png",
+    "iconlist": "32.png",
+    "background": "/mnt/SDCARD/Backgrounds/Default/Apps/PYTHON.png",
+    "themecolor": "3776ab",
+    "launch": "python_runner.sh"
+}

@@ -3,122 +3,140 @@
 # Autosave game state for running emulators on shutdown
 # Called by kill_apps.sh before shutdown
 
+# ── Safeguards ────────────────────────────────────────────────────────
+# Ensure required directories exist
+mkdir -p /tmp 2>/dev/null
+mkdir -p /mnt/SDCARD/trimui 2>/dev/null
+
 SCRIPTS_DIR="/mnt/SDCARD/System/usr/trimui/scripts"
 SAVE_DIR="/mnt/SDCARD/trimui/autosave"
 LOG_FILE="/tmp/autosave.log"
 
-# Logging
-log() {
-    echo "$(date '+%H:%M:%S') [autosave] $1" >> "$LOG_FILE"
-    echo "$(date '+%H:%M:%S') [autosave] $1"
-}
-
 # Create save directory
-mkdir -p "$SAVE_DIR"
+mkdir -p "$SAVE_DIR" 2>/dev/null
+
+# ── Logging ───────────────────────────────────────────────────────────
+log() {
+    echo "$(date '+%H:%M:%S') [autosave] $1" >> "$LOG_FILE" 2>/dev/null
+}
 
 log "Starting autosave..."
 
 # ── RetroArch autosave ─────────────────────────────────────────────────
 save_retroarch() {
-    local pid
-    pid=$(pgrep -f "retroarch" | head -1)
+    # Check if RetroArch is running
+    pid=$(pgrep -f "retroarch" 2>/dev/null | head -1)
     [ -z "$pid" ] && return 1
-    
+
     log "RetroArch detected (PID: $pid)"
-    
+
     # Find the game being played
-    local game_name=""
-    local core_name=""
-    
+    game_name=""
+    core_name=""
+
     # Try to get info from /proc
-    local cmdline=$(tr '\0' ' ' < /proc/$pid/cmdline 2>/dev/null)
-    
-    # Extract core and game from command line
-    if echo "$cmdline" | grep -q "\-L"; then
-        core_name=$(echo "$cmdline" | grep -oP '\-L \K[^ ]+' | xargs basename 2>/dev/null)
-        game_name=$(echo "$cmdline" | grep -oP '\-L [^ ]+ \K[^ ]+' | xargs basename 2>/dev/null)
+    if [ -f "/proc/$pid/cmdline" ]; then
+        cmdline=$(tr '\0' ' ' < /proc/$pid/cmdline 2>/dev/null)
+        
+        # Extract core from -L argument
+        if echo "$cmdline" | grep -q -- "-L"; then
+            core_name=$(echo "$cmdline" | awk -F'-L ' '{print $2}' | awk '{print $1}' | xargs basename 2>/dev/null)
+            game_name=$(echo "$cmdline" | awk -F'-L ' '{print $2}' | awk '{for(i=2;i<=NF;i++) printf "%s ", $i; print ""}' | awk '{print $1}' | xargs basename 2>/dev/null)
+        fi
     fi
-    
+
     [ -z "$game_name" ] && game_name="unknown_game"
     [ -z "$core_name" ] && core_name="unknown_core"
-    
+
     log "Game: $game_name Core: $core_name"
-    
+
     # Create save state directory
-    local state_dir="$SAVE_DIR/retroarch"
-    mkdir -p "$state_dir"
-    
+    state_dir="$SAVE_DIR/retroarch"
+    mkdir -p "$state_dir" 2>/dev/null
+
     # Save current game info for resume
     cat > "$state_dir/last_game.txt" << EOF
 core=$core_name
 game=$game_name
 timestamp=$(date +%s)
 EOF
-    
+
     # Try to trigger save state via RetroArch's network command
-    # RetroArch listens on port 55355 by default
     if command -v nc >/dev/null 2>&1; then
-        echo "SAVE_STATE" | nc -w 1 127.0.0.1 55355 2>/dev/null
-        log "Sent SAVE_STATE command to RetroArch"
+        echo "SAVE_STATE" | nc -w 2 127.0.0.1 55355 2>/dev/null
+        log "Sent SAVE_STATE command to RetroArch via nc"
     fi
-    
+
+    # Save in-slot state marker
+    echo "$game_name" > "$state_dir/last_state_slot" 2>/dev/null
+
     return 0
 }
 
 # ── PPSSPP autosave ────────────────────────────────────────────────────
 save_ppsspp() {
-    local pid
-    pid=$(pgrep -f "PPSSPPSDL" | head -1)
+    # Check if PPSSPP is running
+    pid=$(pgrep -f "PPSSPPSDL" 2>/dev/null | head -1)
     [ -z "$pid" ] && return 1
-    
+
     log "PPSSPP detected (PID: $pid)"
-    
-    local state_dir="$SAVE_DIR/ppsspp"
-    mkdir -p "$state_dir"
-    
+
+    state_dir="$SAVE_DIR/ppsspp"
+    mkdir -p "$state_dir" 2>/dev/null
+
     # Get game info from command line
-    local cmdline=$(tr '\0' ' ' < /proc/$pid/cmdline 2>/dev/null)
-    local game_name=$(echo "$cmdline" | grep -oP '\.iso|\.cso' | head -1 | xargs basename 2>/dev/null)
-    
+    game_name=""
+    if [ -f "/proc/$pid/cmdline" ]; then
+        cmdline=$(tr '\0' ' ' < /proc/$pid/cmdline 2>/dev/null)
+        # Extract game filename
+        for ext in ".iso" ".cso" ".pbp"; do
+            game_name=$(echo "$cmdline" | sed "s/.*[ ]//;s/\(${ext}\).*/\1/" | xargs basename 2>/dev/null)
+            [ -n "$game_name" ] && break
+        done
+    fi
+
     [ -z "$game_name" ] && game_name="unknown_game"
-    
+
     log "Game: $game_name"
-    
+
     # Save current game info for resume
     cat > "$state_dir/last_game.txt" << EOF
 game=$game_name
 timestamp=$(date +%s)
 EOF
-    
-    # PPSSPP saves state automatically when using Select+R2
-    # We just need to record what was being played
-    
+
     return 0
 }
 
 # ── DraStic autosave ───────────────────────────────────────────────────
 save_drastic() {
-    local pid
-    pid=$(pgrep -f "drastic" | head -1)
+    # Check if DraStic is running
+    pid=$(pgrep -f "drastic" 2>/dev/null | head -1)
     [ -z "$pid" ] && return 1
-    
+
     log "DraStic detected (PID: $pid)"
-    
-    local state_dir="$SAVE_DIR/drastic"
-    mkdir -p "$state_dir"
-    
-    # DraStic has its own autosave mechanism
-    # Just record what was being played
-    local cmdline=$(tr '\0' ' ' < /proc/$pid/cmdline 2>/dev/null)
-    local game_name=$(echo "$cmdline" | grep -oP '\.nds' | head -1 | xargs basename 2>/dev/null)
-    
+
+    state_dir="$SAVE_DIR/drastic"
+    mkdir -p "$state_dir" 2>/dev/null
+
+    # Get game info from command line
+    game_name=""
+    if [ -f "/proc/$pid/cmdline" ]; then
+        cmdline=$(tr '\0' ' ' < /proc/$pid/cmdline 2>/dev/null)
+        game_name=$(echo "$cmdline" | sed 's/.*[ ]//;s/\(.nds\).*/\1/' | xargs basename 2>/dev/null)
+    fi
+
     [ -z "$game_name" ] && game_name="unknown_game"
-    
+
+    # Save current game info for resume
     cat > "$state_dir/last_game.txt" << EOF
 game=$game_name
 timestamp=$(date +%s)
 EOF
-    
+
+    # Trigger DraStic's internal save by sending SIGUSR1
+    kill -USR1 "$pid" 2>/dev/null && log "Sent SIGUSR1 to DraStic for autosave"
+
     return 0
 }
 
@@ -130,10 +148,13 @@ save_ppsspp
 save_drastic
 
 # Save overall state
+mkdir -p "$SAVE_DIR" 2>/dev/null
 cat > "$SAVE_DIR/last_session.txt" << EOF
 timestamp=$(date +%s)
 date=$(date)
 EOF
 
 log "Autosave completed"
-sync
+sync 2>/dev/null
+
+exit 0

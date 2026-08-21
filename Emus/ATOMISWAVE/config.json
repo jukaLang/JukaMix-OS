@@ -33,5 +33,6 @@
       "name": "Flycast - v2.4 (RetroAchievem.)",
       "launch": "flycast_standalone_v2.4.sh"
     }
-  ]
+  ],
+  "extlist": "zip"
 }

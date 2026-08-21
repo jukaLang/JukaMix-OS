@@ -1,0 +1,10 @@
+{
+  "label": "Game Switcher",
+  "label.ch.lang": "游戏切换器",
+  "icon": "/mnt/SDCARD/Icons/Default/Apps/GameSwitcher.png",
+  "iconsmall": "80.png",
+  "iconlist": "32.png",
+  "background": "/mnt/SDCARD/Backgrounds/Default/GameSwitcher.png",
+  "themecolor": "4A90D9",
+  "launch": "launch.sh"
+}

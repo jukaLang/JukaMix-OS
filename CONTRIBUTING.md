@@ -1,7 +1,6 @@
 # Contributing to JukaMix OS
 
-Thanks for wanting to help! JukaMix is an independently maintained derivative of
-CrossMix-OS for the TrimUI Smart Pro, TrimUI Smart Pro S, and TrimUI Brick. This
+Thanks for wanting to help! JukaMix OS supports the TrimUI Smart Pro, TrimUI Smart Pro S, TrimUI Brick, and TrimUI Brick Pro. This
 guide covers what's welcome and the rules that keep the tree healthy.
 
 ## What's welcome

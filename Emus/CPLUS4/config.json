@@ -10,5 +10,6 @@
   "imgpath": "../../Imgs/CPLUS4",
   "useswap": 1,
   "shortname": 0,
-  "hidebios": 1
+  "hidebios": 1,
+  "extlist": "d64,prg,t64"
 }

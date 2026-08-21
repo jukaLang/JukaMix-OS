@@ -27,7 +27,7 @@ redact() {
     mount 2>&1 || true
     printf '\n== JukaMix version files ==\n'
     # `crossmix` is kept intentionally so diagnostics still detect pre-rebrand
-    # (CrossMix OS) installs during migration.
+    # installs during migration.
     find /mnt/SDCARD/System -maxdepth 5 -type f \
         \( -iname '*jukamix*version*' -o -iname '*crossmix*version*' \) \
         -print -exec cat {} \; 2>/dev/null || true

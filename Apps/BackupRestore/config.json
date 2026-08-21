@@ -1,0 +1,9 @@
+{
+    "label": "Backup & Restore",
+    "icon": "/mnt/SDCARD/Icons/Default/Apps/BACKUP.png",
+    "iconsmall": "80.png",
+    "iconlist": "32.png",
+    "background": "/mnt/SDCARD/Backgrounds/Default/Apps/BACKUP.png",
+    "themecolor": "6c5ce7",
+    "launch": "backup_restore.sh"
+}

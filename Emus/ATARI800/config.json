@@ -10,5 +10,6 @@
   "imgpath": "../../Imgs/ATARI800",
   "useswap": 0,
   "shortname": 0,
-  "hidebios": 0
+  "hidebios": 0,
+  "extlist": "xfd,atr,dcm,xfd"
 }

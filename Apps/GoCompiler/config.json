@@ -1,0 +1,9 @@
+{
+    "label": "Go Compiler",
+    "icon": "/mnt/SDCARD/Icons/Default/Apps/GO.png",
+    "iconsmall": "80.png",
+    "iconlist": "32.png",
+    "background": "/mnt/SDCARD/Backgrounds/Default/Apps/GO.png",
+    "themecolor": "00add8",
+    "launch": "go_compiler.sh"
+}

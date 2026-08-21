@@ -1,0 +1,9 @@
+{
+    "label": "System Info",
+    "icon": "/mnt/SDCARD/Icons/Default/Apps/INFO.png",
+    "iconsmall": "80.png",
+    "iconlist": "32.png",
+    "background": "/mnt/SDCARD/Backgrounds/Default/Apps/INFO.png",
+    "themecolor": "00b894",
+    "launch": "system_info.sh"
+}

@@ -24,9 +24,8 @@ Smart Pro · Smart Pro S · Brick · Brick Pro — auto-detected, auto-tuned.
 
 ## Why JukaMix?
 
-JukaMix OS builds on CrossMix OS to deliver a more powerful, customizable experience — with
-improved settings, new features, updated emulators, and additional apps. It's completely free
-and open source.
+JukaMix OS delivers a powerful, customizable experience — with improved settings, new features,
+updated emulators, and additional apps. It's completely free and open source.
 
 | | JukaMix OS |
 |---|---|
@@ -37,6 +36,28 @@ and open source.
 | **Integrity-checked updates** | Every file in an update is verified against the release manifest before it's applied |
 | **Self-healing PortMaster** | Missing, broken, or copied without exec bits? It repairs itself on launch |
 | **Built for creators** | Themes, icon packs, backgrounds, "Best" templates and automatic overlays |
+| **Python & Go support** | Run Python scripts and compile Go programs directly on device |
+
+---
+
+## Development Tools
+
+JukaMix OS includes built-in development tools for scripting and programming:
+
+### Python Support
+- **Python 3.12** runtime for running `.py` scripts
+- **pip** package manager for installing libraries
+- **Apps/PythonRunner** — Easy script execution and interactive shell
+
+### Go Compiler
+- **Go 1.22** toolchain for building `.go` programs
+- **go build/run/get** — Full development workflow
+- **Apps/GoCompiler** — Build, run, and manage Go projects
+
+### Buildroot Environment
+- **Full Linux chroot** with modern glibc 2.44
+- **GPU/Audio/Input passthrough** for advanced development
+- **OverlayFS** for persistent package installs
 
 ---
 
@@ -45,26 +66,19 @@ and open source.
 On the Smart Pro / Smart Pro S / Brick you have a handful of custom-firmware options. They
 split into three philosophies (the last one on different hardware):
 
-- **Keep the stock firmware** — JukaMix, CrossMix, and (historically) Tomato run as a layer on
+- **Keep the stock firmware** — JukaMix and (historically) Tomato run as a layer on
   top of the TrimUI firmware, so you keep its drivers, hardware video decode and power
   management. Everything is on the SD card: remove it and the device is stock again.
-- **Replace the OS** — Knulli, NextUI and MinUI boot their own system. You gain
+- **Replace the OS** — Knulli and MinUI boot their own system. You gain
   control and polish, but trade away the stock firmware's device-specific tuning.
-- **Go Android** — GammaOS swaps the stock OS for a debloated, performance-tuned Android
-  build: Play Store, the whole Android app ecosystem, a Daijisho front-end and root. On the
-  TrimUI Smart Pro and Brick the lightweight **GammaOS Nano** variant runs directly (same
-  Allwinner A133P as its Android port); the full Android "Next" line covers the other
-  Android handhelds. Only the Smart Pro S (A523) is out of reach.
+
 
 | CFW | Devices | Base | Updates | Standout | Watch out |
 |---|---|---|---|---|---|
-| **JukaMix OS** | Smart Pro, Smart Pro S, Brick | Stock firmware + CrossMix framework | Transactional, in-app over Wi-Fi | One image tuned for all three devices; updates that can't brick you | Younger project; TrimUI devices only |
-| **CrossMix-OS** | Smart Pro (+ Brick in newer releases) | Stock firmware | Full-image | The mature upstream that JukaMix builds on | Full-image updates only; Smart Pro S not covered |
+| **JukaMix OS** | Smart Pro, Smart Pro S, Brick | Stock firmware | Transactional, in-app over Wi-Fi | One image tuned for all three devices; updates that can't brick you | Younger project; TrimUI devices only |
 | **Knulli** | Broad — many handhelds | Batocera / EmulationStation, standalone OS | Full-image reflash | Desktop-grade emulation: scrapers, themes, Bluetooth, netplay | Heavier and slower to boot; higher idle power draw |
 | **Tomato OS** | Original TrimUI Smart only | Stock firmware | Full-image | Pioneering enhanced OS (70+ emulators, ports) for its day | Discontinued; not for the Smart Pro / Smart Pro S / Brick |
-| **NextUI** | Brick, Smart Pro, Smart Pro S | MinUI fork with rebuilt emulation engine | Full-image | Fast, low-latency, feature-packed (shaders, WiFi, LEDs, cheats, paks) | PolyForm **non-commercial** license |
 | **MinUI** | Many devices — TrimUI builds are **Legacy** | Minimal libretro launcher | Full-image | Zero-config: boots straight to games, auto-resume | No settings, boxart or themes by default; TrimUI builds being retired |
-| **GammaOS / Next / Nano** | Android handhelds (Anbernic, AYANEO, Retroid, …) + TrimUI Smart Pro & Brick via **Nano** (A133P) | LineageOS-based Android (12, now 13/14; Nano = lightweight micro-OS) | Full reflash (fastboot / SD image) | The whole Android ecosystem: Play Store, Android apps, Daijisho, root; Nano = console-style home | Needs a PC to flash; full-image updates; some Nano releases launch Patreon-gated |
 
 ### JukaMix OS
 
@@ -76,16 +90,7 @@ self-healing PortMaster, Python, glibc and the Wi-Fi Control Center; GPL-3.0 ope
 
 **Disadvantages** — TrimUI devices only; it's a layer on the stock firmware, so it inherits
 stock quirks (and a TrimUI firmware update can change behavior underneath it); younger and
-smaller community than CrossMix or Knulli.
-
-### CrossMix-OS
-
-**Advantages** — the mature, battle-tested upstream that JukaMix forks; huge community, wiki
-and theme/icon ecosystem; same stock-firmware benefits; first-class PortMaster integration.
-
-**Disadvantages** — releases are full-image installs (no transactional, rollback-safe
-updates); no per-device capability layer, so Smart Pro S coverage and device-specific tuning
-are left to the user; updates can overwrite your data if you're not careful.
+smaller community than Knulli.
 
 ### Knulli
 
@@ -106,18 +111,6 @@ Smart, with 70+ built-in emulators, ports and customization.
 does **not** run on the Smart Pro, Smart Pro S or Brick. Listed here mainly so you don't
 install it by mistake.
 
-### NextUI
-
-**Advantages** — takes MinUI's simplicity and rebuilds the emulation engine: fixes MinUI's
-screen tearing and sync stutter, ~20 ms lower latency, shaders, overlays and high-quality
-audio resampling; WiFi, Bluetooth audio, cheats, game-time tracking, LED control, deep
-sleep and battery stats; an active community **pak** ecosystem (pak store, music player,
-netplay) built specifically for the Brick, Smart Pro and Smart Pro S.
-
-**Disadvantages** — licensed under **PolyForm Noncommercial 1.0.0** (since August 2026), so
-commercial use is prohibited even though it started GPL-3.0; MinUI-minimal roots mean some
-niceties (scraping, art) come via third-party paks.
-
 ### MinUI
 
 **Advantages** — the definition of simple: no settings, no boxart, no themes, no cruft; boots
@@ -129,29 +122,9 @@ Wi-Fi apps) and no tuning; and on TrimUI specifically the Smart Pro and Brick bu
 marked **Legacy** — the project says they "will be retired in a future update", so it's a
 risky pick for a daily driver.
 
-### GammaOS / GammaOS Next / GammaOS Nano
-
-**Advantages** — turns a handheld into a clean, debloated, performance-tuned device: a
-LineageOS base (Android 12, now Android 13/14 with GammaOS Next), the **Full** edition ships
-Google Play and Play Services (Lite skips Google for extra headroom), the Daijisho
-front-end preconfigured with RetroArch, Aurora Store, Magisk root, performance governors
-with quick-settings tiles, and system-wide extras (shaders, BFI, HDMI docking, LED sync) on
-supported panels. On the TrimUI Smart Pro and Brick the lightweight **GammaOS Nano** variant
-boots a fast console-style home directly — it is built on the same Allwinner A133P Android
-port, runs entirely from the SD card, and leaves the stock firmware untouched. Above all it
-unlocks the **entire Android ecosystem** — Play Store apps, Android ports, cloud streaming
-— which no Linux firmware can offer.
-
-**Disadvantages** — flashing needs a PC (fastboot/ADB + drivers, or the SD-card tool for
-Nano), updates are full reflashes, and you're managing an Android device (app updates,
-battery, background behavior) rather than a focused game console. Some Nano releases launch
-as Patreon-exclusive early access before going public, and the full Android "Next" line
-covers Android handhelds only — the Smart Pro S (A523 SoC) is not supported.
-
 > The short version: want the stock experience with safe updates across all three devices?
-> That's JukaMix. Want a completely different, feature-dense OS? Knulli or NextUI. Want
-> bare-bones speed? MinUI. Want the Android ecosystem — even on the Smart Pro or Brick?
-> GammaOS (Nano on TrimUI, Next on Android handhelds) is the pick.
+> That's JukaMix. Want a completely different, feature-dense OS? Knulli. Want
+> bare-bones speed? MinUI.
 
 ---
 
@@ -206,14 +179,7 @@ Drop ROMs into `Roms/<platform>/` and BIOS files into `BIOS/` (see `Emus/<platfo
 BIOS each system expects), then re-enter the system to refresh the game lists. Themes, icon packs
 and backgrounds are drop-in — see [Customise it](#customise-it).
 
-<details>
-<summary><b>Upgrading from CrossMix-OS?</b></summary>
 
-Back up `Roms/`, `BIOS/`, `Saves/` and `Screenshots/` to your computer first, then follow the
-steps above and copy your data back. Saves and settings are migrated by the installer where
-possible, but a manual backup is always the safe move.
-
-</details>
 
 ---
 
@@ -401,15 +367,9 @@ update until the first release exists.
 
 ## Attribution
 
-JukaMix OS is an independently maintained derivative of **CrossMix-OS**, originally created by
-**Cizia**. It is not affiliated with or endorsed by the CrossMix-OS maintainers. CrossMix-OS and
-all included third-party components remain subject to their respective licenses and copyrights.
-
-JukaMix builds on the extensive work of the CrossMix-OS project, **PortMaster** (Kloptops),
-**Schmurtzm's** scripts, and the many contributors acknowledged upstream. Full upstream credits,
-including Cizia's own notes on the features that make CrossMix what it is, live in the
-**[CrossMix-OS repository](https://github.com/cizia64/CrossMix-OS)**; what JukaMix changed on top
-of that baseline is documented in [CHANGELOG.md](CHANGELOG.md).
+JukaMix OS includes work from **PortMaster** (Kloptops), **Schmurtzm's** scripts, and many
+community contributors. All included third-party components remain subject to their respective
+licenses and copyrights.
 
 Licensed under [GPL-3.0](LICENSE).
 

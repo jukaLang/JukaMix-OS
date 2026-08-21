@@ -1,0 +1,9 @@
+{
+    "label": "LED Control",
+    "icon": "/mnt/SDCARD/Icons/Default/Apps/LED.png",
+    "iconsmall": "80.png",
+    "iconlist": "32.png",
+    "background": "/mnt/SDCARD/Backgrounds/Default/Apps/LED.png",
+    "themecolor": "e17055",
+    "launch": "led_control.sh"
+}

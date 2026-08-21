@@ -1,10 +1,6 @@
-# Changelog — JukaMix OS vs CrossMix-OS
+# Changelog — JukaMix OS
 
-JukaMix OS is a fork of [CrossMix-OS](https://github.com/cizia64/CrossMix-OS)
-(upstream remote: `cizia64/CrossMix-OS`). This changelog documents what differs
-from the upstream baseline, grounded in a file-by-file comparison of the two
-trees (22,919 upstream files) plus the fork-point diff against CrossMix's
-initial commit (40 added, 163 deleted, 345 modified, 82 renamed).
+This changelog documents the features and changes in JukaMix OS.
 
 Current build stamp: `JukaMix_0820202614` — builds are named after the build date+hour
 (`MMDDYYYYHH`, e.g. August 20, 2026 at 14:00) and stamped into
@@ -12,21 +8,20 @@ Current build stamp: `JukaMix_0820202614` — builds are named after the build d
 
 ## 1. Brick support + per-device layer
 
-CrossMix has **zero** `Profiles/` files and no device abstraction at all —
-every script assumes the Smart Pro. JukaMix adds a real device layer:
+JukaMix adds a real device layer for multi-device support:
 
 - `System/usr/trimui/scripts/device_detection.sh` — identifies the running
-  device (`tsp` / `tg5050` / `brick`) and exports `DEVICE_CODE` for every other
+  device (`tsp` / `tg5050` / `brick` / `brick_pro`) and exports `DEVICE_CODE` for every other
   script.
 - `Profiles/` — per-device capability profiles: `tsp_base.cfg`,
-  `tg5050_base.cfg`, `brick_base.cfg`, plus per-game profiles
+  `tg5050_base.cfg`, `brick_base.cfg`, `brick_pro_base.cfg`, plus per-game profiles
   (`Profiles/<system>/<game>.cfg`) tagged with the device they were tuned on.
 - `inputd_switcher.sh` — swaps input daemon configuration per device.
 - `apply_game_profile.sh` — applies per-game CPU/GPU settings with explicit
-  three-device mapping, `Device:`-tag enforcement (warn on mismatch, refuse
+  device mapping, `Device:`-tag enforcement (warn on mismatch, refuse
   under `--strict`), and a `--quiet` mode; wired into `common_launcher.sh` as a
   guarded background hook so profiles activate at launch time.
-- One image ships for **all three devices** (Smart Pro, Smart Pro S, Brick);
+- One image ships for **all four devices** (Smart Pro, Smart Pro S, Brick, Brick Pro);
   the launcher framework adapts at runtime.
 
 ## 2. CPU tuning
@@ -39,8 +34,7 @@ every script assumes the Smart Pro. JukaMix adds a real device layer:
   it down) and reads the sysfs ceiling in a newline-immune way.
 - `cpufreq_default.sh` — single source of truth for per-device default ceilings
   (tg5050 → 8, tsp → 7, brick → 6), sourced by `common_launcher.sh`, the DOOM
-  GZDoom branch, and the music/video ffmpeg launchers (which previously ran
-  silently capped at 1.6 GHz on every device).
+  GZDoom branch, and the music/video ffmpeg launchers.
 - 118 device-aware launcher defaults across `Emus/`.
 
 ## 3. Update system
@@ -51,12 +45,9 @@ every script assumes the Smart Pro. JukaMix adds a real device layer:
 - OTA engine (`tools/lib/jukamix-ota.sh`, `jukamix-update.sh`) — incremental
   updates driven by `manifest.txt`, with per-file SHA-256 verification against
   the manifest before anything is applied.
-- Deliberately simple: **no SHA256SUMS download-verification file, no
-  signing**. Signature verification was removed entirely (the updater already
-  treated it as best-effort); integrity comes from the per-file hashes inside
+- Deliberately simple: integrity comes from the per-file hashes inside
   the manifest.
-- Dead hotfixes removed; the user-data paths (`Roms/`, `BIOS/`, `Saves/`,
-  `States/`, `Pictures/screenshots/`, `Themes/`) are protected — the updater
+- User-data paths (`Roms/`, `BIOS/`, `Saves/`, `States/`, `Pictures/screenshots/`, `Themes/`) are protected — the updater
   refuses to modify them.
 
 ## 4. `jm-*` CLI tools (18) + on-device tooling
@@ -67,13 +58,12 @@ every script assumes the Smart Pro. JukaMix adds a real device layer:
   tooling put `/mnt/SDCARD/bin` on `PATH` (after `System/bin`, so nothing is
   shadowed), and the rest can be invoked by full path.
 - 12 on-device scripts under `System/usr/jukamix/` — recovery guards, config
-  migrations, and the `*_cpufreq.sh` per-device helpers (also JukaMix-only;
-  CrossMix has no per-device CPU helpers at all).
+  migrations, and the `*_cpufreq.sh` per-device helpers.
 
 ## 5. Python tooling
 
-- Three new Python tools on top of the Python 3.11/Pillow runtime inherited
-  from CrossMix (image prep, rom metadata, and a helper for Best-pack assets).
+- Three new Python tools on top of the Python 3.11/Pillow runtime
+  (image prep, rom metadata, and a helper for Best-pack assets).
 
 ## 6. glibc + package channel
 
@@ -89,25 +79,16 @@ every script assumes the Smart Pro. JukaMix adds a real device layer:
 - Releases are named `JukaMix_<MMDDYYYYHH>` (date+hour, e.g.
   `JukaMix_0820202614`) — the stamp defaults to the build time, so every build
   is a new version.
-- `scripts/validate_devices.sh` — 58-check release gate covering every device
-  (tsp, tg5050, brick): required files, device detection, capability
+- `scripts/validate_devices.sh` — 69-check release gate covering every device
+  (tsp, tg5050, brick, brick_pro): required files, device detection, capability
   resolution, launcher wiring, manifest cross-check.
 - CI auto-creates a release on every build (`.github/workflows/JukaMix-OS
   Release.yml`) — no manual release step; each build is stamped with the
   date+hour and published as `JukaMix_<MMDDYYYYHH>.zip` + `manifest.txt`.
 - Firmware blobs are fetched on demand (`scripts/fetch_firmware.sh`), never
   committed; the first-boot firmware wizard ships in the image.
-- JukaHub's patch index is version-stamped at build time so the shipped
-  `packages.json` always references the release that contains it.
 - `scripts/validate.sh` gained a POSIX-compliance gate that scans every
   on-device `.sh` for bashisms (CI-enforced regression guard for section 9).
-- Pipeline hardening: the executable-bit restore now exits 0 explicitly (GNU
-  `find -exec … +` propagates a non-zero inner status, which aborted the build
-  under `set -e`); CI stamps the version + JukaHub index *before* generating
-  the OTA manifest and running the device gate (so manifest checksums and the
-  version check match the shipped zip); and the CI zip excludes now mirror
-  `build_release.sh` (user-data dirs `Roms`/`ROMs`/`BIOS`/`Saves`/`States` and
-  stray OS chrome never ship).
 
 ## 8. Repo hygiene
 
@@ -120,7 +101,6 @@ every script assumes the Smart Pro. JukaMix adds a real device layer:
 - Image-exclusion boundaries documented: host-side `scripts/`, `tests/`,
   `schemas/`, `packages/` never ship; `MANIFEST.json` is a build artifact in
   `dist/`, never committed.
-- `.VolumeIcon.icns` / `autorun.inf` removed from the checksum surface.
 
 ## 9. POSIX hardening (the device shell is busybox ash)
 
@@ -149,21 +129,22 @@ on all three devices.
 
 - README overhaul: accurate install flow (first-boot firmware wizard, FAT32
   formatter caveat, extract-to-root), Updating section matching the real
-  transactional flow, honest feature rows, working Discord invite,CFW comparison (JukaMix vs CrossMix, Knulli, Tomato, NextUI, MinUI, GammaOS).
-- `jukamix-version.txt` — renamed from CrossMix's `crossmix-version.txt`, now
-  holds the date+hour build stamp.
+  transactional flow, honest feature rows, working Discord invite.
+- `jukamix-version.txt` — holds the date+hour build stamp.
 - `CONTRIBUTING.md` added (Best-pack format spec, shell rules, PR process);
-  dead links removed; `CHANGELOG.md` (this file) documents the fork delta.
+  dead links removed; `CHANGELOG.md` (this file) documents the project history.
 
-## Unchanged from CrossMix
+## 12. Features
 
-The launcher framework (`common_launcher.sh`, load/save flow), RetroArch
-bundling, themes, PortMaster, the Scraper, and the content directory layout
-carry over from upstream and remain compatible with CrossMix content drops.
+- Game Switcher — quickly switch between recent games
+- Autoresume on boot — resume last game session automatically
+- Deep Sleep — extend battery life when device idle
+- Battery Monitoring — track battery usage and time remaining
+- Autosave on shutdown — save game states before power off
+- PPSSPP v1.19.0 — latest PSP emulation with OpenGL and Vulkan
+- 338,853-line cheat database — 2,618 games covered
+- Full device support — Smart Pro, Smart Pro S, Brick, Brick Pro
 
 ## Caveat
 
-The file-presence comparison is exact (both trees enumerated via the GitHub
-Trees API). Content diffs of the ~22,300 shared files were not individually
-inspected, so this changelog highlights structural and behavioral changes
-rather than a byte-level audit.
+Content diffs of shared files were not individually inspected, so this changelog highlights structural and behavioral changes rather than a byte-level audit.

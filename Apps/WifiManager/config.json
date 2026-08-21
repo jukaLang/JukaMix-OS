@@ -1,0 +1,9 @@
+{
+    "label": "WiFi Manager",
+    "icon": "/mnt/SDCARD/Icons/Default/Apps/WIFI.png",
+    "iconsmall": "80.png",
+    "iconlist": "32.png",
+    "background": "/mnt/SDCARD/Backgrounds/Default/Apps/WIFI.png",
+    "themecolor": "0984e3",
+    "launch": "wifi_manager.sh"
+}
