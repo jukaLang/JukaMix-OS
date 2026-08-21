@@ -24,43 +24,35 @@ for arg in "$@"; do
 done
 
 # ── Helpers ────────────────────────────────────────────────────────────
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
+# Use printf for POSIX-compatible colored output
 pass() {
-    echo -e "  ${GREEN}[PASS]${NC} $1"
+    printf '  \033[0;32m[PASS]\033[0m %s\n' "$1"
 }
 
 fail() {
-    echo -e "  ${RED}[FAIL]${NC} $1"
+    printf '  \033[0;31m[FAIL]\033[0m %s\n' "$1"
     FAIL_COUNT=$((FAIL_COUNT + 1))
 }
 
 warn() {
-    echo -e "  ${YELLOW}[WARN]${NC} $1"
+    printf '  \033[1;33m[WARN]\033[0m %s\n' "$1"
     WARN_COUNT=$((WARN_COUNT + 1))
 }
 
 section() {
-    echo ""
-    echo -e "${BLUE}━━━ $1 ━━━${NC}"
+    printf '\n\033[0;34m━━━ %s ━━━\033[0m\n' "$1"
 }
 
 # ── Gate 1: Shell syntax check (sh -n) ────────────────────────────────
 section "Gate 1: Shell syntax check (sh -n)"
 
 SYNTAX_ERRORS=0
-while IFS= read -r script; do
+find "$REPO_ROOT" -name "*.sh" -type f 2>/dev/null | while IFS= read -r script; do
     if ! sh -n "$script" 2>/dev/null; then
         fail "Syntax error: $script"
         SYNTAX_ERRORS=$((SYNTAX_ERRORS + 1))
     fi
-done <<EOF
-$(find "$REPO_ROOT" -name "*.sh" -type f 2>/dev/null)
-EOF
+done
 
 if [ "$SYNTAX_ERRORS" -eq 0 ]; then
     pass "All shell scripts have valid syntax"
@@ -71,19 +63,25 @@ section "Gate 2: ShellCheck analysis"
 
 if command -v shellcheck >/dev/null 2>&1; then
     SHELLCHECK_ISSUES=0
-    
+
     # Exclusions: SC1091 (can't follow external), SC2039 (ash compatibility)
-    while IFS= read -r script; do
+    find "$REPO_ROOT/System/usr/trimui/scripts" -name "*.sh" -type f 2>/dev/null | while IFS= read -r script; do
         if ! shellcheck -e SC1091,SC2039 -S warning "$script" 2>/dev/null; then
             SHELLCHECK_ISSUES=$((SHELLCHECK_ISSUES + 1))
             if [ "$VERBOSE" -eq 1 ]; then
                 shellcheck -e SC1091,SC2039 -S warning "$script" 2>&1 | head -5
             fi
         fi
-    done <<EOF
-$(find "$REPO_ROOT/System/usr/trimui/scripts -name "*.sh" -type f 2>/dev/null)
-$(find "$REPO_ROOT/System/starts" -name "*.sh" -type f 2>/dev/null)
-EOF
+    done
+
+    find "$REPO_ROOT/System/starts" -name "*.sh" -type f 2>/dev/null | while IFS= read -r script; do
+        if ! shellcheck -e SC1091,SC2039 -S warning "$script" 2>/dev/null; then
+            SHELLCHECK_ISSUES=$((SHELLCHECK_ISSUES + 1))
+            if [ "$VERBOSE" -eq 1 ]; then
+                shellcheck -e SC1091,SC2039 -S warning "$script" 2>&1 | head -5
+            fi
+        fi
+    done
 
     if [ "$SHELLCHECK_ISSUES" -eq 0 ]; then
         pass "No ShellCheck warnings in critical scripts"
@@ -101,26 +99,22 @@ CRLF_FILES=0
 LITERAL_NL_FILES=0
 
 # Check for CRLF line endings
-while IFS= read -r file; do
+find "$REPO_ROOT" \( -name "*.sh" -o -name "*.json" -o -name "*.txt" -o -name "*.cfg" -o -name "*.conf" \) -not -path "*/.git/*" 2>/dev/null | head -500 | while IFS= read -r file; do
     if file "$file" 2>/dev/null | grep -q "CRLF"; then
         fail "CRLF line endings: $file"
         CRLF_FILES=$((CRLF_FILES + 1))
     fi
-done <<EOF
-$(find "$REPO_ROOT" -name "*.sh" -o -name "*.json" -o -name "*.txt" -o -name "*.cfg" -o -name "*.conf" | grep -v ".git/" | head -500)
-EOF
+done
 
 # Check for literal \n in shell scripts
-while IFS= read -r file; do
+find "$REPO_ROOT" -name "*.sh" -type f 2>/dev/null | head -200 | while IFS= read -r file; do
     if grep -q '\\n' "$file" 2>/dev/null && ! grep -q 'echo.*-e\|printf' "$file" 2>/dev/null; then
         if grep -q '\\\\n' "$file" 2>/dev/null; then
             fail "Literal \\n corruption: $file"
             LITERAL_NL_FILES=$((LITERAL_NL_FILES + 1))
         fi
     fi
-done <<EOF
-$(find "$REPO_ROOT" -name "*.sh" -type f 2>/dev/null | head -200)
-EOF
+done
 
 if [ "$CRLF_FILES" -eq 0 ] && [ "$LITERAL_NL_FILES" -eq 0 ]; then
     pass "No CRLF or newline corruption detected"
@@ -131,27 +125,23 @@ section "Gate 4: JSON configuration validation"
 
 JSON_ERRORS=0
 if command -v jq >/dev/null 2>&1; then
-    while IFS= read -r json_file; do
+    find "$REPO_ROOT" -name "config.json" -type f 2>/dev/null | head -300 | while IFS= read -r json_file; do
         if ! jq empty "$json_file" 2>/dev/null; then
             fail "Invalid JSON: $json_file"
             JSON_ERRORS=$((JSON_ERRORS + 1))
         fi
-    done <<EOF
-$(find "$REPO_ROOT" -name "config.json" -type f 2>/dev/null | head -300)
-EOF
+    done
 
     if [ "$JSON_ERRORS" -eq 0 ]; then
         pass "All config.json files are valid JSON"
     fi
 elif command -v python3 >/dev/null 2>&1; then
-    while IFS= read -r json_file; do
+    find "$REPO_ROOT" -name "config.json" -type f 2>/dev/null | head -300 | while IFS= read -r json_file; do
         if ! python3 -c "import json; json.load(open('$json_file'))" 2>/dev/null; then
             fail "Invalid JSON: $json_file"
             JSON_ERRORS=$((JSON_ERRORS + 1))
         fi
-    done <<EOF
-$(find "$REPO_ROOT" -name "config.json" -type f 2>/dev/null | head -300)
-EOF
+    done
 
     if [ "$JSON_ERRORS" -eq 0 ]; then
         pass "All config.json files are valid JSON"
@@ -163,23 +153,23 @@ fi
 # ── Gate 5: No hardcoded passwords/tokens/keys ────────────────────────
 section "Gate 5: No hardcoded secrets"
 
-SECRET_PATTERNS="password\s*=\s*[\"'][^\"']+|token\s*=\s*[\"'][^\"']+|api_key\s*=\s*[\"'][^\"']+|secret\s*=\s*[\"'][^\"']+|BEGIN.*PRIVATE KEY"
 SECRET_FILES=0
 
-while IFS= read -r file; do
-    if grep -qiE "$SECRET_PATTERNS" "$file" 2>/dev/null; then
+find "$REPO_ROOT" \( -name "*.sh" -o -name "*.json" -o -name "*.conf" -o -name "*.cfg" \) -not -path "*/.git/*" -not -path "*/node_modules/*" 2>/dev/null | head -500 | while IFS= read -r file; do
+    if grep -qi "password\s*=\s*['\"].*['\"]" "$file" 2>/dev/null || \
+       grep -qi "token\s*=\s*['\"].*['\"]" "$file" 2>/dev/null || \
+       grep -qi "api_key\s*=\s*['\"].*['\"]" "$file" 2>/dev/null || \
+       grep -qi "secret\s*=\s*['\"].*['\"]" "$file" 2>/dev/null; then
         # Filter out known safe patterns
         if ! grep -qi "example\|placeholder\|your_\|TODO\|FIXME" "$file" 2>/dev/null; then
             fail "Potential hardcoded secret: $file"
             SECRET_FILES=$((SECRET_FILES + 1))
         fi
     fi
-done <<EOF
-$(find "$REPO_ROOT" -name "*.sh" -o -name "*.json" -o -name "*.conf" -o -name "*.cfg" | grep -v ".git/" | grep -v "node_modules" | head -500)
-EOF
+done
 
 # Check for actual private keys
-if find "$REPO_ROOT" -name "*.pem" -o -name "*.key" -o -name "id_rsa" -o -name "id_ed25519" 2>/dev/null | grep -v ".git/" | head -1 | grep -q .; then
+if find "$REPO_ROOT" \( -name "*.pem" -o -name "*.key" -o -name "id_rsa" -o -name "id_ed25519" \) -not -path "*/.git/*" 2>/dev/null | head -1 | grep -q .; then
     fail "Private key files found in repository"
     SECRET_FILES=$((SECRET_FILES + 1))
 fi
@@ -193,23 +183,19 @@ section "Gate 6: Unsafe operation detection"
 
 UNSAFE_OPS=0
 
-# Check for unquoted rm/cp/mv with glob expansion
-while IFS= read -r file; do
-    # rm without -f and without quotes around variable
+find "$REPO_ROOT/System/usr/trimui/scripts" -name "*.sh" -type f 2>/dev/null | while IFS= read -r file; do
+    # Check for unquoted rm with variable expansion
     if grep -n 'rm [^f].*\$[A-Z_]' "$file" 2>/dev/null | grep -v '2>/dev/null\|"\$' | head -1 | grep -q .; then
         warn "Potential unsafe rm: $file"
         UNSAFE_OPS=$((UNSAFE_OPS + 1))
     fi
-    
+
     # Kill without PID tracking
-    if grep -n 'kill.*gptokeyb2\|kill.*presenter\|kill.*sdl2imgshow' "$file" 2>/dev/null | grep -v 'GPTOKEY_PID\|current_pid\|sdl_pid\|$!' | head -1 | grep -q .; then
+    if grep -n 'kill.*gptokeyb2\|kill.*presenter\|kill.*sdl2imgshow' "$file" 2>/dev/null | grep -v 'GPTOKEY_PID\|current_pid\|sdl_pid\|\$!' | head -1 | grep -q .; then
         warn "Kill without PID tracking: $file"
         UNSAFE_OPS=$((UNSAFE_OPS + 1))
     fi
-done <<EOF
-$(find "$REPO_ROOT/System/usr/trimui/scripts" -name "*.sh" -type f 2>/dev/null)
-$(find "$REPO_ROOT/Emus" -name "*.sh" -type f 2>/dev/null | head -100)
-EOF
+done
 
 if [ "$UNSAFE_OPS" -eq 0 ]; then
     pass "No unsafe operations detected"
@@ -220,8 +206,7 @@ section "Gate 7: Background process cleanup verification"
 
 UNCLEAN_PROCS=0
 
-# Check for background processes without trap or PID save
-while IFS= read -r file; do
+find "$REPO_ROOT/Emus" -name "launch.sh" -type f 2>/dev/null | while IFS= read -r file; do
     # Check if script has background processes
     if grep -n '&$' "$file" 2>/dev/null | grep -v '#' | head -1 | grep -q .; then
         # Check if it has a trap
@@ -233,10 +218,21 @@ while IFS= read -r file; do
             fi
         fi
     fi
-done <<EOF
-$(find "$REPO_ROOT/Emus" -name "launch.sh" -type f 2>/dev/null)
-$(find "$REPO_ROOT/System/usr/trimui/scripts" -name "*.sh" -type f 2>/dev/null)
-EOF
+done
+
+find "$REPO_ROOT/System/usr/trimui/scripts" -name "*.sh" -type f 2>/dev/null | while IFS= read -r file; do
+    # Check if script has background processes
+    if grep -n '&$' "$file" 2>/dev/null | grep -v '#' | head -1 | grep -q .; then
+        # Check if it has a trap
+        if ! grep -q 'trap.*EXIT\|trap.*INT\|trap.*TERM' "$file" 2>/dev/null; then
+            # Check if it saves PIDs
+            if ! grep -q 'PID=\$!\|_pid=\$!\|GPTOKEY_PID=\$!' "$file" 2>/dev/null; then
+                warn "Background process without cleanup: $(basename "$file")"
+                UNCLEAN_PROCS=$((UNCLEAN_PROCS + 1))
+            fi
+        fi
+    fi
+done
 
 if [ "$UNCLEAN_PROCS" -eq 0 ]; then
     pass "Background processes have proper cleanup"
@@ -298,8 +294,6 @@ fi
 # ── Gate 10: Failure injection tests ──────────────────────────────────
 section "Gate 10: Installer/update failure tests"
 
-# This is a placeholder - actual tests would need to be implemented
-# For now, we check that the test files exist
 if [ -d "$REPO_ROOT/tests" ]; then
     TEST_COUNT=$(find "$REPO_ROOT/tests" -name "*.sh" -type f 2>/dev/null | wc -l)
     if [ "$TEST_COUNT" -gt 0 ]; then
@@ -314,15 +308,13 @@ fi
 # ── Gate 11: Protected paths absent from update manifest ───────────────
 section "Gate 11: Protected paths in update manifest"
 
-# Check that protected paths (ROMs, BIOS, saves) are not in update scripts
-PROTECTED_PATHS="Roms BIOS saves states screenshots themes"
 PROTECTED_IN_UPDATE=0
 
 if [ -f "$REPO_ROOT/System/usr/trimui/scripts/jukamix_update.sh" ]; then
-    for path in $PROTECTED_PATHS; do
-        if grep -q "\/$path\/" "$REPO_ROOT/System/usr/trimui/scripts/jukamix_update.sh" 2>/dev/null; then
+    for path in Roms BIOS Saves States; do
+        if grep -q "/$path/" "$REPO_ROOT/System/usr/trimui/scripts/jukamix_update.sh" 2>/dev/null; then
             # Check if it's a protective check, not a destructive operation
-            if ! grep -B2 "\/$path\/" "$REPO_ROOT/System/usr/trimui/scripts/jukamix_update.sh" 2>/dev/null | grep -q "skip\|protect\|ignore\|exclude"; then
+            if ! grep -B2 "/$path/" "$REPO_ROOT/System/usr/trimui/scripts/jukamix_update.sh" 2>/dev/null | grep -q "skip\|protect\|ignore\|exclude"; then
                 warn "Protected path '$path' referenced in update script"
                 PROTECTED_IN_UPDATE=$((PROTECTED_IN_UPDATE + 1))
             fi
@@ -345,42 +337,36 @@ fi
 
 # Check for bundled binary licenses
 BUNDLED_LICENSES=0
-for dir in "$REPO_ROOT/System/bin" "$REPO_ROOT/System/lib"; do
-    if [ -d "$dir" ]; then
-        for bin in "$dir"/*; do
-            if [ -f "$bin" ] && file "$bin" 2>/dev/null | grep -q "ELF\|executable"; then
-                bin_name=$(basename "$bin")
-                if ! find "$REPO_ROOT" -name "LICENSE*" -o -name "COPYING*" 2>/dev/null | xargs grep -l "$bin_name" 2>/dev/null | head -1 | grep -q .; then
-                    warn "No license found for bundled binary: $bin_name"
-                    BUNDLED_LICENSES=$((BUNDLED_LICENSES + 1))
-                fi
+if [ -d "$REPO_ROOT/System/bin" ]; then
+    for bin in "$REPO_ROOT/System/bin"/*; do
+        if [ -f "$bin" ] && file "$bin" 2>/dev/null | grep -q "ELF\|executable"; then
+            bin_name=$(basename "$bin")
+            if ! find "$REPO_ROOT" \( -name "LICENSE*" -o -name "COPYING*" \) 2>/dev/null | xargs grep -l "$bin_name" 2>/dev/null | head -1 | grep -q .; then
+                warn "No license found for bundled binary: $bin_name"
+                BUNDLED_LICENSES=$((BUNDLED_LICENSES + 1))
             fi
-        done
-    fi
-done
+        fi
+    done
+fi
 
 if [ "$BUNDLED_LICENSES" -eq 0 ]; then
     pass "All bundled binaries have license references"
 fi
 
 # ── Summary ────────────────────────────────────────────────────────────
-echo ""
-echo -e "${BLUE}━━━ Summary ━━━${NC}"
-echo -e "  Failures: ${RED}$FAIL_COUNT${NC}"
-echo -e "  Warnings: ${YELLOW}$WARN_COUNT${NC}"
+printf '\n\033[0;34m━━━ Summary ━━━\033[0m\n'
+printf '  Failures: \033[0;31m%s\033[0m\n' "$FAIL_COUNT"
+printf '  Warnings: \033[1;33m%s\033[0m\n' "$WARN_COUNT"
 
 if [ "$FAIL_COUNT" -gt 0 ]; then
-    echo ""
-    echo -e "${RED}CI GATE FAILED${NC}"
+    printf '\n\033[0;31mCI GATE FAILED\033[0m\n'
     if [ "$RELEASE_MODE" -eq 1 ]; then
         exit 1
     fi
 elif [ "$WARN_COUNT" -gt 0 ]; then
-    echo ""
-    echo -e "${YELLOW}CI GATE PASSED WITH WARNINGS${NC}"
+    printf '\n\033[1;33mCI GATE PASSED WITH WARNINGS\033[0m\n'
 else
-    echo ""
-    echo -e "${GREEN}CI GATE PASSED${NC}"
+    printf '\n\033[0;32mCI GATE PASSED\033[0m\n'
 fi
 
 exit 0

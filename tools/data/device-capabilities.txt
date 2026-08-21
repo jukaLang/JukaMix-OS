@@ -10,4 +10,4 @@
 tsp|TrimUI Smart Pro|aarch64|1.0.0|1280x720 IPS, 16:9 horizontal handheld (primary target)
 tg5050|TrimUI Smart Pro S (TG5050)|aarch64|1.0.0|1280x720 IPS, 16:9 horizontal handheld; same resolution as tsp, handled like tsp
 brick|TrimUI Brick|aarch64|1.0.0|1024x768 IPS touchscreen, 4:3 vertical handheld; Allwinner A133 Plus, no analog sticks, no rumble
-brick_pro|TrimUI Brick Pro|aarch64|1.0.0|1024x768 IPS, 16:9 horizontal handheld; Allwinner A133 Plus, dual analog sticks, rumble motor
+brick_pro|TrimUI Brick Pro|aarch64|1.0.0|1280x720 IPS, 16:9 horizontal handheld; Allwinner A133 Plus, dual analog sticks, rumble motor

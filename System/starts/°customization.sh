@@ -253,7 +253,7 @@ if [ "$version" != "$FW_patched_version" ]; then
     if [ "$JukaMix_Update" = "0" ]; then
 
         case "$current_device" in
-            tsp|tg5050)
+            tsp|tg5050|brick_pro)
                 src_dir="/mnt/SDCARD/Apps/BootLogo/Images_1280x720"
                 ;;
             *)
