@@ -173,21 +173,83 @@ jobs:
             -x "*.zip" -x "*.log" -x "./MANIFEST.json" -x "./jukauser.json" \
             -x "./.VolumeIcon.icns" -x "./autorun.inf" \
             -x "./.gitignore" -x "./.gitattributes"
+      - name: Split release zip (GitHub 2GB limit)
+        run: |
+          cd /home/runner/work/JukaMix-OS
+          ZIP_FILE="JukaMix_${{ env.BUILD_VERSION }}.zip"
+          ZIP_SIZE=$(stat -c%s "$ZIP_FILE" 2>/dev/null || stat -f%z "$ZIP_FILE")
+          echo "ZIP size: $ZIP_SIZE bytes ($(echo "scale=2; $ZIP_SIZE / 1073741824" | bc)GB)"
+          
+          if [ "$ZIP_SIZE" -gt 2147483648 ]; then
+            echo "ZIP exceeds 2GB, splitting into parts..."
+            # Split into 1GB parts
+            split -b 1073741824 -d -a 2 "$ZIP_FILE" "${ZIP_FILE%.zip}.part."
+            ls -lh ${ZIP_FILE%.zip}.part.*
+            echo "PARTS_CREATED=true" >> $GITHUB_ENV
+          else
+            echo "ZIP is under 2GB, no split needed"
+            echo "PARTS_CREATED=false" >> $GITHUB_ENV
+          fi
       - name: Create Release
-        id: release
-        uses: marvinpinto/action-automatic-releases@latest
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          # Rebuilding the same version replaces the previous release (and its
-          # tag), so releases/latest always points at the newest build.
-          automatic_release_tag: "JukaMix_${{ env.BUILD_VERSION }}"
-          title: "JukaMix ${{ env.BUILD_VERSION }}"
-          prerelease: false
-          files: |
-            /home/runner/work/JukaMix-OS/JukaMix_${{ env.BUILD_VERSION }}.zip
-            /home/runner/work/JukaMix-OS/manifest.txt
-            /home/runner/work/JukaMix-OS/feed/*
-            # Buildroot rootfs files (built by buildroot job)
-            /home/runner/work/JukaMix-OS/output/rootfs-tg5050.ext2
-            /home/runner/work/JukaMix-OS/output/rootfs-tsp-brick.ext2
-          draft: false
+        run: |
+          cd /home/runner/work/JukaMix-OS
+          
+          # Delete existing release/tag if present
+          gh release delete "JukaMix_${{ env.BUILD_VERSION }}" --repo ${{ github.repository }} --yes --cleanup-tag 2>/dev/null || true
+          
+          # Create new release
+          gh release create "JukaMix_${{ env.BUILD_VERSION }}" \
+            --repo ${{ github.repository }} \
+            --title "JukaMix ${{ env.BUILD_VERSION }}" \
+            --notes "JukaMix OS ${{ env.BUILD_VERSION }}"
+          
+          echo "Release created: JukaMix_${{ env.BUILD_VERSION }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload release assets
+        run: |
+          cd /home/runner/work/JukaMix-OS
+          
+          # Upload main zip
+          echo "Uploading main release zip..."
+          gh release upload "JukaMix_${{ env.BUILD_VERSION }}" \
+            "JukaMix_${{ env.BUILD_VERSION }}.zip" \
+            --repo ${{ github.repository }} --clobber
+          
+          # Upload manifest
+          echo "Uploading manifest..."
+          gh release upload "JukaMix_${{ env.BUILD_VERSION }}" \
+            "manifest.txt" \
+            --repo ${{ github.repository }} --clobber
+          
+          # Upload feed files
+          echo "Uploading feed files..."
+          for feed_file in feed/*; do
+            [ -f "$feed_file" ] || continue
+            gh release upload "JukaMix_${{ env.BUILD_VERSION }}" \
+              "$feed_file" \
+              --repo ${{ github.repository }} --clobber
+          done
+          
+          # Upload rootfs files
+          echo "Uploading rootfs files..."
+          gh release upload "JukaMix_${{ env.BUILD_VERSION }}" \
+            "output/rootfs-tg5050.ext2" \
+            "output/rootfs-tsp-brick.ext2" \
+            --repo ${{ github.repository }} --clobber
+          
+          # Upload split parts if they exist
+          if [ "${{ env.PARTS_CREATED }}" = "true" ]; then
+            echo "Uploading split parts..."
+            for part in JukaMix_${{ env.BUILD_VERSION }}.part.*; do
+              [ -f "$part" ] || continue
+              echo "Uploading $part..."
+              gh release upload "JukaMix_${{ env.BUILD_VERSION }}" \
+                "$part" \
+                --repo ${{ github.repository }} --clobber
+            done
+          fi
+          
+          echo "All assets uploaded successfully"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
