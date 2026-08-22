@@ -72,8 +72,10 @@ device_files() {
 				"Profiles/DEVICE-OVERRIDES/tsp_base.cfg"
 			;;
 		tg5050)
+			# The Smart Pro S (A523) uses its stock firmware input daemon
+			# (/usr/trimui/bin/trimui_inputd) rather than a shipped resource
+			# binary — the TSP (A133) daemon does not map its gamepad.
 			printf '%s\n' \
-				"System/resources/tg5050_inputd" \
 				"System/usr/trimui/scripts/tg5050_cpufreq.sh" \
 				"System/usr/trimui/scripts/tg5050_thermal_manager.sh" \
 				"Profiles/DEVICE-OVERRIDES/tg5050_base.cfg" \
@@ -102,6 +104,7 @@ device_files() {
 common_files() {
 	printf '%s\n' \
 		"System/usr/trimui/scripts/device_detection.sh" \
+		"System/usr/trimui/scripts/inputd_resolve.sh" \
 		"System/usr/trimui/scripts/inputd_switcher.sh" \
 		"System/usr/trimui/scripts/common_launcher.sh" \
 		"System/usr/trimui/scripts/cpufreq_default.sh" \

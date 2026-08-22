@@ -133,6 +133,33 @@ If this persists:
 
 ---
 
+### Smart Pro S: Buttons Dead, Then White Screen Crash
+
+**Symptom:** On the **Smart Pro S (TSPS / TG5050)**, the menu loads but the
+D-pad and face buttons do nothing — only **Home, Power, Volume, and Fn**
+respond. After roughly 30 seconds the screen shows a white screen with
+horizontal lines and the device powers off.
+
+**Cause:** Some releases shipped the **Smart Pro (A133)** input daemon for the
+Smart Pro S as well. The two devices use different SoCs (A133 vs A523), so the
+daemon does not translate gamepad events — only the kernel-handled keys still
+work — and the mismatched daemon can crash the display.
+
+**Fix:**
+1. **Update JukaMix** to a release that uses the device's own firmware input
+   daemon on the Smart Pro S (fixed in current releases).
+2. **Force shutdown:** hold Power for 10 seconds.
+3. **Confirm the hardware is fine:** remove the SD card and power on without it.
+   The stock firmware should respond to the D-pad and face buttons normally.
+4. **Manual workaround (if you can't update):**
+   - Delete `trimui/app/trimui_inputd` from the SD card so the device falls back
+     to its built-in input daemon.
+   - Reinsert the card and power on.
+5. **If it still fails:** report your model and firmware version as described
+   below.
+
+---
+
 ## Game Issues
 
 ### Games Not Showing Up

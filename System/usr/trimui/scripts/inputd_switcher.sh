@@ -33,6 +33,9 @@ esac
 
 bin_dir="/mnt/SDCARD/trimui/app"
 
+# shellcheck source=../scripts/inputd_resolve.sh
+. /mnt/SDCARD/System/usr/trimui/scripts/inputd_resolve.sh
+
 # ── Get device type ───────────────────────────────────────────────────
 # Default device if file not found
 device="tsp"  # Default to TSP (safest default)
@@ -43,22 +46,14 @@ fi
 # Sanitize device name
 device=$(echo "$device" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
 
-# Brick and Brick Pro use the same inputd as TSP (horizontal layout)
-case "$device" in
-    brick|brick_pro)
-        device="tsp"
-        ;;
-esac
-
 # ── Find input daemon ─────────────────────────────────────────────────
-# Use the device-specific input daemon when present; otherwise fall back to the
-# Smart Pro (tsp) daemon.
-src_inputd="/mnt/SDCARD/System/resources/${device}_inputd"
-if [ ! -f "$src_inputd" ]; then
-    src_inputd="/mnt/SDCARD/System/resources/tsp_inputd"
-fi
+# Device → binary mapping lives in inputd_resolve.sh (single source of truth,
+# shared with inputd_launcher.sh). The Smart Pro S (tg5050 / A523) resolves to
+# its stock firmware daemon because the TSP (A133) binary does not decode its
+# gamepad.
+src_inputd="$(inputd_resolve "$device")"
 
-# Last resort: try any available inputd
+# Last resort: try any available inputd in the resources dir
 if [ ! -f "$src_inputd" ]; then
     src_inputd=$(ls /mnt/SDCARD/System/resources/*_inputd 2>/dev/null | head -1)
 fi

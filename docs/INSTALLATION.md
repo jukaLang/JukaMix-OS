@@ -14,11 +14,16 @@
 | Device | Code | SoC | Display | Notes |
 |--------|------|-----|---------|-------|
 | TrimUI Smart Pro | `tsp` | Allwinner A133 Plus | 1280×720 (16:9) | Dual analog sticks |
-| TrimUI Smart Pro S | `tg5050` | Allwinner A523 | 1280×720 (16:9) | Fastest SoC |
+| TrimUI Smart Pro S | `tg5050` | Allwinner A523 | 1280×720 (16:9) | Fastest SoC — see note below |
 | TrimUI Brick | `brick` | Allwinner A133 Plus | 1024×768 (4:3, touch) | Vertical, no analog |
 | TrimUI Brick Pro | `brick_pro` | Allwinner A133 Plus | 1280×720 (16:9) | Same as TSP |
 
 **One image works on all devices** — the OS auto-detects and tunes itself.
+
+> **Known issue (Smart Pro S):** On some units the menu loads but the gamepad
+> buttons don't respond and the device crashes to a white screen after ~30
+> seconds. See the
+> [Troubleshooting guide](./TROUBLESHOOTING.md#smart-pro-s-buttons-dead-then-white-screen-crash).
 
 ---
 

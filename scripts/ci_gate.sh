@@ -244,10 +244,12 @@ section "Gate 8: Device support coverage"
 REQUIRED_DEVICES="tsp tg5050 brick brick_pro"
 MISSING_DEVICES=0
 
-# Check detection scripts
+# Check detection scripts (the resolver is the single source of truth for
+# device → input daemon mapping, so it must cover every device too).
 for device in $REQUIRED_DEVICES; do
     if ! grep -rq "$device" "$REPO_ROOT/System/starts/_FirmwareCheck.sh" 2>/dev/null && \
-       ! grep -rq "$device" "$REPO_ROOT/System/usr/trimui/scripts/inputd_switcher.sh" 2>/dev/null; then
+       ! grep -rq "$device" "$REPO_ROOT/System/usr/trimui/scripts/inputd_switcher.sh" 2>/dev/null && \
+       ! grep -rq "$device" "$REPO_ROOT/System/usr/trimui/scripts/inputd_resolve.sh" 2>/dev/null; then
         warn "Device '$device' not found in detection scripts"
         MISSING_DEVICES=$((MISSING_DEVICES + 1))
     fi
